@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
 import '../utils/theme_util.dart';
+import '../services/exchange_rate_service.dart';
 
 class TransactionForm extends StatefulWidget {
   final Function(Transaction) onSubmit;
@@ -13,7 +14,7 @@ class TransactionForm extends StatefulWidget {
     super.key,
     required this.onSubmit,
     this.initialTransaction,
-    this.currency = '¥', // 设置默认值
+    this.currency = '¥', // 设置默认值，对应CNY
   });
 
   @override
@@ -29,6 +30,7 @@ class _TransactionFormState extends State<TransactionForm> {
   late TransactionType _type;
   late Category _category;
   late DateTime _date;
+  late String _selectedCurrency;
 
   @override
   void initState() {
@@ -41,11 +43,25 @@ class _TransactionFormState extends State<TransactionForm> {
       _type = widget.initialTransaction!.type;
       _category = widget.initialTransaction!.category;
       _date = widget.initialTransaction!.date;
+      // 确保货币符号在支持的列表中
+      _selectedCurrency =
+          ExchangeRateService.supportedCurrencies.values.contains(
+                widget.initialTransaction!.currency,
+              )
+              ? widget.initialTransaction!.currency
+              : ExchangeRateService.supportedCurrencies.values.first;
     } else {
       // 默认值
       _type = TransactionType.expense;
       _category = Category.food;
       _date = DateTime.now();
+      // 确保货币符号在支持的列表中，如果widget.currency不在列表中，使用默认的第一个
+      _selectedCurrency =
+          ExchangeRateService.supportedCurrencies.values.contains(
+                widget.currency,
+              )
+              ? widget.currency
+              : ExchangeRateService.supportedCurrencies.values.first;
     }
   }
 
@@ -83,7 +99,7 @@ class _TransactionFormState extends State<TransactionForm> {
         type: _type,
         category: _category,
         note: _noteController.text.isEmpty ? null : _noteController.text,
-        currency: widget.currency, // 将 widget.currency 传递给 currency 参数
+        currency: _selectedCurrency, // 使用用户选择的货币
       );
 
       widget.onSubmit(transaction);
@@ -117,40 +133,73 @@ class _TransactionFormState extends State<TransactionForm> {
           ),
           const SizedBox(height: 16),
 
-          // 金额
-          TextFormField(
-            controller: _amountController,
-            decoration: InputDecoration(
-              // Removed const here
-              labelText: '金额',
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(
-                  widget.currency, // 使用 widget.currency 显示货币符号
-                  style: const TextStyle(fontSize: 18),
+          // 金额和货币选择
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: TextFormField(
+                  controller: _amountController,
+                  decoration: InputDecoration(
+                    labelText: '金额',
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Text(
+                        _selectedCurrency,
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d\.]')),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return '请输入金额';
+                    }
+                    try {
+                      final amount = double.parse(value);
+                      if (amount <= 0) {
+                        return '金额必须大于0';
+                      }
+                    } catch (e) {
+                      return '请输入有效的金额';
+                    }
+                    return null;
+                  },
                 ),
               ),
-            ),
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ), // Added const back
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[\d\.]')),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedCurrency,
+                  decoration: const InputDecoration(
+                    labelText: '货币',
+                    prefixIcon: Icon(Icons.monetization_on),
+                  ),
+                  items:
+                      ExchangeRateService.supportedCurrencies.entries
+                          .map(
+                            (entry) => DropdownMenuItem<String>(
+                              value: entry.value, // 货币符号作为值
+                              child: Text('${entry.value} (${entry.key})'),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedCurrency = value;
+                      });
+                    }
+                  },
+                ),
+              ),
             ],
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '请输入金额';
-              }
-              try {
-                final amount = double.parse(value);
-                if (amount <= 0) {
-                  return '金额必须大于0';
-                }
-              } catch (e) {
-                return '请输入有效的金额';
-              }
-              return null;
-            },
           ),
           const SizedBox(height: 16),
 

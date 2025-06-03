@@ -13,7 +13,7 @@ class AddTransactionScreen extends StatefulWidget {
 }
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
-  String _currency = '¥'; // 添加 _currency 状态变量
+  String _currency = '¥'; // 添加 _currency 状态变量，对应CNY
 
   @override
   void initState() {
@@ -24,7 +24,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Future<void> _loadCurrency() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currency = prefs.getString('currency') ?? '¥';
+      _currency = prefs.getString('currency') ?? '¥'; // 默认CNY
     });
   }
 

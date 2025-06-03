@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+import '../services/exchange_rate_service.dart';
 
 enum TransactionType { income, expense }
 
@@ -33,11 +34,20 @@ class Transaction {
     required this.type,
     required this.category,
     this.note,
-    this.currency = '¥', // 为 currency 提供默认值或设为 required
+    required this.currency, // 将currency设为required，确保传入有效的货币符号
   }) : id = id ?? const Uuid().v4();
 
   // 从Map创建Transaction对象（用于数据库操作）
   factory Transaction.fromMap(Map<String, dynamic> map) {
+    // 获取货币符号，确保是有效的
+    String currencySymbol = map['currency'] ?? '¥';
+    // 如果货币符号不在支持的列表中，使用默认的第一个
+    if (!ExchangeRateService.supportedCurrencies.values.contains(
+      currencySymbol,
+    )) {
+      currencySymbol = ExchangeRateService.supportedCurrencies.values.first;
+    }
+
     return Transaction(
       id: map['id'],
       title: map['title'],
@@ -46,7 +56,7 @@ class Transaction {
       type: TransactionType.values.byName(map['type']),
       category: Category.values.byName(map['category']),
       note: map['note'],
-      currency: map['currency'] ?? '¥', // 从 map 中读取 currency，提供默认值
+      currency: currencySymbol, // 使用有效的货币符号
     );
   }
 

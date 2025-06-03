@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart'; // 导入 provider
 import '../main.dart'; // 导入 main.dart 以使用 ThemeProvider
+import '../providers/transaction_provider.dart';
+import '../services/exchange_rate_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -109,6 +111,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           ListTile(
+            title: const Text('刷新汇率数据'),
+            subtitle: const Text('更新最新的货币汇率信息'),
+            trailing: const Icon(Icons.refresh, size: 20),
+            onTap: () async {
+              // 显示加载指示器
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext context) {
+                  return const Center(child: CircularProgressIndicator());
+                },
+              );
+
+              try {
+                // 刷新汇率（通过获取最新汇率来刷新缓存）
+                await ExchangeRateService.getExchangeRates('CNY');
+
+                // 刷新交易提供者中的汇率数据
+                await Provider.of<TransactionProvider>(
+                  context,
+                  listen: false,
+                ).refreshExchangeRates();
+
+                // 关闭加载指示器
+                Navigator.pop(context);
+
+                // 显示成功消息
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('汇率数据已更新')));
+              } catch (e) {
+                // 关闭加载指示器
+                Navigator.pop(context);
+
+                // 显示错误消息
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('更新汇率失败: ${e.toString()}')),
+                );
+              }
+            },
+          ),
+          ListTile(
             title: const Text('导出数据'),
             subtitle: const Text('将您的交易数据导出为CSV文件'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -169,7 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showCurrencyPicker() {
-    final currencies = ['¥', '\$', '€', '£', '₹', '₽', '¥'];
+    final currencies = ExchangeRateService.supportedCurrencies;
 
     showDialog(
       context: context,
@@ -182,19 +226,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 shrinkWrap: true,
                 itemCount: currencies.length,
                 itemBuilder: (context, index) {
+                  final entry = currencies.entries.elementAt(index);
+                  final currencyCode = entry.key;
+                  final currencySymbol = entry.value;
+
                   return ListTile(
-                    title: Text(currencies[index]),
+                    title: Text('$currencySymbol ($currencyCode)'),
                     onTap: () {
                       setState(() {
-                        _currency = currencies[index];
+                        _currency = currencySymbol;
                         _saveSettings();
                       });
                       // 调用 _saveCurrency 方法保存货币设置
-                      _saveCurrency(currencies[index]);
+                      _saveCurrency(currencySymbol);
                       Navigator.pop(context);
                     },
                     trailing:
-                        _currency == currencies[index]
+                        _currency == currencySymbol
                             ? const Icon(Icons.check, color: Colors.green)
                             : null,
                   );
