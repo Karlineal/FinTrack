@@ -1,0 +1,89 @@
+import 'package:uuid/uuid.dart';
+
+enum TransactionType { income, expense }
+
+enum Category {
+  food,
+  transportation,
+  entertainment,
+  shopping,
+  utilities,
+  health,
+  education,
+  salary,
+  gift,
+  other,
+}
+
+class Transaction {
+  final String id;
+  final String title;
+  final double amount;
+  final DateTime date;
+  final TransactionType type;
+  final Category category;
+  final String? note;
+  final String currency; // 添加 currency 字段
+
+  Transaction({
+    String? id,
+    required this.title,
+    required this.amount,
+    required this.date,
+    required this.type,
+    required this.category,
+    this.note,
+    this.currency = '¥', // 为 currency 提供默认值或设为 required
+  }) : id = id ?? const Uuid().v4();
+
+  // 从Map创建Transaction对象（用于数据库操作）
+  factory Transaction.fromMap(Map<String, dynamic> map) {
+    return Transaction(
+      id: map['id'],
+      title: map['title'],
+      amount: map['amount'],
+      date: DateTime.parse(map['date']),
+      type: TransactionType.values.byName(map['type']),
+      category: Category.values.byName(map['category']),
+      note: map['note'],
+      currency: map['currency'] ?? '¥', // 从 map 中读取 currency，提供默认值
+    );
+  }
+
+  // 将Transaction对象转换为Map（用于数据库操作）
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'amount': amount,
+      'date': date.toIso8601String(),
+      'type': type.name,
+      'category': category.name,
+      'note': note,
+      'currency': currency, // 将 currency 添加到 map
+    };
+  }
+
+  // 创建Transaction的副本
+  Transaction copyWith({
+    String? id,
+    String? title,
+    double? amount,
+    DateTime? date,
+    TransactionType? type,
+    Category? category,
+    String? note,
+    String? currency, // 添加 currency 参数
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      note: note ?? this.note,
+      currency: currency ?? this.currency, // 更新 currency
+    );
+  }
+}
