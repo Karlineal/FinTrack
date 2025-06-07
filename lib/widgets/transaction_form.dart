@@ -93,313 +93,321 @@ class _TransactionFormState extends State<TransactionForm> {
     if (_formKey.currentState!.validate()) {
       final transaction = Transaction(
         id: widget.initialTransaction?.id, // 如果是编辑模式，则保留原ID
-        title: _titleController.text,
+        title: _noteController.text, // 备注即为title
         amount: double.parse(_amountController.text),
         date: _date,
         type: _type,
         category: _category,
-        note: _noteController.text.isEmpty ? null : _noteController.text,
+        note: null, // 不再单独存note
         currency: _selectedCurrency, // 使用用户选择的货币代码
       );
-
       widget.onSubmit(transaction);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 交易类型选择
-          _buildTypeSelector(),
-          const SizedBox(height: 16),
+    final isExpense = _type == TransactionType.expense;
+    final categories =
+        isExpense
+            ? [
+              Category.food, // 餐饮
+              Category.takeout, // 外卖
+              Category.shopping, // 购物
+              Category.daily, // 日用品
+              Category.entertainment, // 娱乐
+              Category.transportation, // 交通
+              Category.utilities, // 水电煤
+              Category.phone, // 话费
+              Category.internet, // 网费
+              Category.snacks, // 零食水果
+              Category.drinks, // 饮料酒水
+              Category.clothes, // 服饰
+              Category.study, // 学习
+              Category.campus, // 校园卡
+              Category.health, // 医疗
+              Category.beauty, // 护肤美妆
+              Category.digital, // 数码
+              Category.smoke, // 烟酒
+              Category.sports, // 运动
+              Category.travel, // 旅行
+              Category.pets, // 宠物
+              Category.gift, // 礼物
+              Category.fastmail, // 快递
+              Category.rent, // 房租
+              Category.salary, // 工资
+              Category.otherExpense, // 其他支出
+              Category.other, // 其他
+            ]
+            : [Category.salary, Category.gift, Category.other];
 
-          // 标题
-          TextFormField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: '标题',
-              prefixIcon: Icon(Icons.title),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '请输入标题';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-
-          // 金额和货币选择
-          Row(
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 3, // 调整flex比例
-                child: TextFormField(
-                  controller: _amountController,
-                  decoration: InputDecoration(
-                    labelText: '金额',
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4.0,
-                        vertical: 8.0,
-                      ), // 调整 padding
-                      child: Text(
-                        ExchangeRateService
-                                .supportedCurrencies[_selectedCurrency] ??
-                            _selectedCurrency, // 显示货币符号
-                        style: const TextStyle(fontSize: 18),
-                      ),
+              // 顶部自定义Tab+关闭按钮
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const Spacer(),
+                  ToggleButtons(
+                    borderRadius: BorderRadius.circular(20),
+                    isSelected: [
+                      _type == TransactionType.expense,
+                      _type == TransactionType.income,
+                    ],
+                    onPressed: (index) {
+                      setState(() {
+                        _type =
+                            index == 0
+                                ? TransactionType.expense
+                                : TransactionType.income;
+                      });
+                    },
+                    selectedColor: Colors.white,
+                    fillColor:
+                        _type == TransactionType.expense
+                            ? ThemeUtil.expenseColor
+                            : ThemeUtil.incomeColor,
+                    color: Colors.grey[600],
+                    constraints: const BoxConstraints(
+                      minWidth: 80,
+                      minHeight: 36,
                     ),
+                    children: const [
+                      Text(
+                        '支出',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '收入',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                  const Spacer(flex: 2),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // 类别选择区（支出/收入类别分开，支出更丰富，支持滑动）
+              SizedBox(
+                height: 320,
+                child: GridView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.1,
                   ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[\d\.]')),
-                  ],
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '请输入金额';
-                    }
-                    try {
-                      final amount = double.parse(value);
-                      if (amount <= 0) {
-                        return '金额必须大于0';
-                      }
-                    } catch (e) {
-                      return '请输入有效的金额';
-                    }
-                    return null;
+                  itemCount: categories.length,
+                  itemBuilder: (context, idx) {
+                    final category = categories[idx];
+                    final selected = _category == category;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _category = category;
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color:
+                              selected
+                                  ? (_type == TransactionType.income
+                                      ? ThemeUtil.incomeColor
+                                      : ThemeUtil.expenseColor)
+                                  : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              FormatUtil.getCategoryIcon(category),
+                              size: 24,
+                              color: selected ? Colors.white : Colors.black87,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              FormatUtil.getCategoryName(category),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: selected ? Colors.white : Colors.black87,
+                                fontWeight:
+                                    selected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   },
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2, // 调整flex比例
-                child: DropdownButtonFormField<String>(
-                  value: _selectedCurrency, // value 绑定为货币代码
-                  isExpanded: true, // 添加 isExpanded 属性
-                  decoration: const InputDecoration(
-                    // 恢复 decoration 属性
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 8,
-                    ), // 调整内边距
+              const SizedBox(height: 20),
+              // 金额与货币类型并列
+              Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: 56,
+                      child: TextFormField(
+                        controller: _amountController,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                          ),
+                          hintText: '0.0',
+                          prefixText: '¥ ',
+                          hintStyle: TextStyle(
+                            fontSize: 20,
+                            color: Colors.grey,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[\d\.]')),
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return '请输入金额';
+                          }
+                          try {
+                            final amount = double.parse(value);
+                            if (amount <= 0) {
+                              return '金额必须大于0';
+                            }
+                          } catch (e) {
+                            return '请输入有效的金额';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
                   ),
-                  items:
-                      ExchangeRateService.supportedCurrencies.entries
-                          .map(
-                            (entry) => DropdownMenuItem<String>(
-                              value:
-                                  entry.key, // DropdownMenuItem 的 value 也使用货币代码
-                              child: Text(
-                                entry.key, // 仅显示货币代码
-                                overflow: TextOverflow.ellipsis, // 添加文本溢出处理
-                                maxLines: 1, // 限制为单行
-                              ),
-                            ),
-                          )
-                          .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedCurrency = value; // 更新为货币代码
-                      });
-                    }
-                  },
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: 56,
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedCurrency,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 14,
+                          ),
+                        ),
+                        items:
+                            ExchangeRateService.supportedCurrencies.entries
+                                .map(
+                                  (entry) => DropdownMenuItem<String>(
+                                    value: entry.key,
+                                    child: Text(
+                                      entry.key,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedCurrency = value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // 日期选择
+              InkWell(
+                onTap: _selectDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: '日期',
+                    prefixIcon: Icon(Icons.calendar_today),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                  ),
+                  child: Text(
+                    FormatUtil.formatDate(_date),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 备注（单行）
+              TextFormField(
+                controller: _noteController,
+                decoration: const InputDecoration(
+                  labelText: '备注',
+                  prefixIcon: Icon(Icons.note),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                  ),
+                ),
+                maxLines: 1,
+              ),
+              const SizedBox(height: 24),
+              // 提交按钮
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: _submitForm,
+                  child: Text(widget.initialTransaction == null ? '添加' : '更新'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // 日期选择
-          InkWell(
-            onTap: _selectDate,
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: '日期',
-                prefixIcon: Icon(Icons.calendar_today),
-              ),
-              child: Text(
-                FormatUtil.formatDate(_date),
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // 类别选择
-          _buildCategorySelector(),
-          const SizedBox(height: 16),
-
-          // 备注
-          TextFormField(
-            controller: _noteController,
-            decoration: const InputDecoration(
-              labelText: '备注（可选）',
-              prefixIcon: Icon(Icons.note),
-            ),
-            maxLines: 3,
-          ),
-          const SizedBox(height: 24),
-
-          // 提交按钮
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _submitForm,
-              child: Text(
-                widget.initialTransaction == null ? '添加' : '更新',
-                style: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    );
-  }
-
-  // 交易类型选择器
-  Widget _buildTypeSelector() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _type = TransactionType.expense;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color:
-                    _type == TransactionType.expense
-                        ? ThemeUtil.expenseColor
-                        : ThemeUtil.expenseColor.withAlpha((0.1 * 255).round()),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  bottomLeft: Radius.circular(8),
-                ),
-              ),
-              child: Text(
-                '支出',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color:
-                      _type == TransactionType.expense
-                          ? Colors.white
-                          : ThemeUtil.expenseColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _type = TransactionType.income;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color:
-                    _type == TransactionType.income
-                        ? ThemeUtil.incomeColor
-                        : ThemeUtil.incomeColor.withAlpha((0.1 * 255).round()),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
-                ),
-              ),
-              child: Text(
-                '收入',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color:
-                      _type == TransactionType.income
-                          ? Colors.white
-                          : ThemeUtil.incomeColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 类别选择器
-  Widget _buildCategorySelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '类别',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children:
-              Category.values.map((category) {
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _category = category;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          _category == category
-                              ? (_type == TransactionType.income
-                                  ? ThemeUtil.incomeColor
-                                  : ThemeUtil.expenseColor)
-                              : Colors.grey.withAlpha((0.1 * 255).round()),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(FormatUtil.getCategoryIcon(category), size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          FormatUtil.getCategoryName(category),
-                          style: TextStyle(
-                            color:
-                                _category == category
-                                    ? Colors.white
-                                    : Theme.of(context).colorScheme.onSurface,
-                            fontWeight:
-                                _category == category
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-        ),
-      ],
     );
   }
 }

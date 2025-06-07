@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../utils/format_util.dart';
-import '../utils/theme_util.dart';
 import '../services/exchange_rate_service.dart';
 
 class SummaryCard extends StatelessWidget {
@@ -19,150 +17,89 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ThemeUtil.primaryColor, Color(0xFF1B5E20)],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((0.04 * 255).toInt()),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  '当前余额',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '结余',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '基准货币',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              FormatUtil.formatCurrency(
-                balance,
-                currencyCode: _getCurrencyCodeFromSymbol(currencySymbol),
               ),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+              Text(
+                '本月',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            balance.toStringAsFixed(2),
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
             ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // 收入
-                _buildSummaryItem(
-                  context,
-                  '收入',
-                  FormatUtil.formatCurrency(
-                    income,
-                    currencyCode: _getCurrencyCodeFromSymbol(currencySymbol),
-                  ),
-                  Icons.arrow_upward,
-                  Colors.white,
-                ),
-                // 支出
-                _buildSummaryItem(
-                  context,
-                  '支出',
-                  FormatUtil.formatCurrency(
-                    expense,
-                    currencyCode: _getCurrencyCodeFromSymbol(currencySymbol),
-                  ),
-                  Icons.arrow_downward,
-                  Colors.white70,
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSummaryItem('支出', expense, Colors.redAccent),
+              _buildSummaryItem('收入', income, Colors.green),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(
-    BuildContext context,
-    String title,
-    String amount,
-    IconData icon,
-    Color color,
-  ) {
-    return Row(
+  Widget _buildSummaryItem(String title, double value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha((0.2 * 255).round()),
-            borderRadius: BorderRadius.circular(8),
+        Text(
+          title,
+          style: TextStyle(
+            color: color.withAlpha((0.7 * 255).toInt()),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-          child: Icon(icon, color: color, size: 16),
         ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: color.withAlpha((0.8 * 255).round()),
-                fontSize: 14,
-              ),
-            ),
-            Text(
-              amount,
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        const SizedBox(height: 4),
+        Text(
+          value.toStringAsFixed(2),
+          style: TextStyle(
+            color: color,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
-  }
-
-  // 从货币符号获取货币代码
-  String _getCurrencyCodeFromSymbol(String symbol) {
-    // 遍历支持的货币映射，找到对应的货币代码
-    for (final entry in ExchangeRateService.supportedCurrencies.entries) {
-      if (entry.value == symbol) {
-        return entry.key;
-      }
-    }
-    // 如果找不到匹配的符号，默认返回CNY
-    return 'CNY';
   }
 }

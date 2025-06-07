@@ -49,6 +49,44 @@ class FormatUtil {
         return Icons.card_giftcard;
       case Category.other:
         return Icons.category;
+      case Category.takeout:
+        return Icons.delivery_dining;
+      case Category.daily:
+        return Icons.home;
+      case Category.pets:
+        return Icons.pets;
+      case Category.campus:
+        return Icons.account_balance;
+      case Category.phone:
+        return Icons.phone_android;
+      case Category.drinks:
+        return Icons.local_drink;
+      case Category.study:
+        return Icons.menu_book;
+      case Category.clothes:
+        return Icons.checkroom;
+      case Category.internet:
+        return Icons.wifi;
+      case Category.snacks:
+        return Icons.icecream;
+      case Category.digital:
+        return Icons.devices;
+      case Category.beauty:
+        return Icons.brush;
+      case Category.smoke:
+        return Icons.smoking_rooms;
+      case Category.sports:
+        return Icons.sports_soccer;
+      case Category.travel:
+        return Icons.flight;
+      case Category.water:
+        return Icons.water;
+      case Category.fastmail:
+        return Icons.local_shipping;
+      case Category.rent:
+        return Icons.house;
+      case Category.otherExpense:
+        return Icons.money_off;
     }
   }
 
@@ -75,6 +113,44 @@ class FormatUtil {
         return '礼物';
       case Category.other:
         return '其他';
+      case Category.takeout:
+        return '外卖';
+      case Category.daily:
+        return '日用品';
+      case Category.pets:
+        return '宠物';
+      case Category.campus:
+        return '校园卡';
+      case Category.phone:
+        return '话费';
+      case Category.drinks:
+        return '饮料酒水';
+      case Category.study:
+        return '学习';
+      case Category.clothes:
+        return '服饰';
+      case Category.internet:
+        return '网费';
+      case Category.snacks:
+        return '零食水果';
+      case Category.digital:
+        return '数码';
+      case Category.beauty:
+        return '护肤美妆';
+      case Category.smoke:
+        return '烟酒';
+      case Category.sports:
+        return '运动';
+      case Category.travel:
+        return '旅行';
+      case Category.water:
+        return '水费';
+      case Category.fastmail:
+        return '快递';
+      case Category.rent:
+        return '房租';
+      case Category.otherExpense:
+        return '其他支出';
     }
   }
 

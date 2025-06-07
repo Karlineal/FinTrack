@@ -511,43 +511,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // 跳过标题行
+      // 批量组装
+      List<app_transaction.Transaction> importList = [];
       for (int i = 1; i < rows.length; i++) {
         final row = rows[i];
         try {
-          if (row.length < 7) continue; // 跳过不完整的行
-
+          if (row.length < 7) continue;
           final dateStr = row[0]?.value?.toString() ?? '';
-          final categoryStr = row[2]?.value?.toString() ?? 'other'; // 记账分类
-          final typeStr = row[3]?.value?.toString() ?? '支出'; // 收支类型
+          final categoryStr = row[2]?.value?.toString() ?? 'other';
+          final typeStr = row[3]?.value?.toString() ?? '支出';
           final noteStr = row[4]?.value?.toString() ?? '';
           final amountStr = row[5]?.value?.toString() ?? '0';
           final currencyStr = row[6]?.value?.toString() ?? 'CNY';
-
           final isIncome = typeStr.contains('收入');
-
           final transaction = app_transaction.Transaction(
             id: const Uuid().v4(),
             date: DateFormat('yyyy-MM-dd HH:mm:ss').parse(dateStr),
-            title: noteStr, // 备注作为标题
+            title: noteStr,
             amount: double.parse(amountStr),
             currency: currencyStr,
             category: app_transaction.Category.values.firstWhere(
               (e) => e.name == categoryStr,
               orElse: () => app_transaction.Category.other,
             ),
-            note: noteStr, // 备注也作为note
+            note: noteStr,
             type:
                 isIncome
                     ? app_transaction.TransactionType.income
                     : app_transaction.TransactionType.expense,
           );
-          await provider.addTransaction(transaction);
+          importList.add(transaction);
         } catch (e) {
-          // 忽略无法解析的行
           debugPrint('无法解析行 $i: $e');
         }
       }
+
+      // 批量插入
+      await provider.batchInsertTransactions(importList);
 
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('数据导入成功')));

@@ -9,6 +9,9 @@ import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 导入 SharedPreferences
 import '../services/exchange_rate_service.dart'; // 导入 ExchangeRateService
+import 'package:intl/intl.dart';
+import '../models/transaction.dart';
+import '../utils/format_util.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,18 +85,111 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('FinTrack'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: 实现搜索功能
-            },
-          ),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 顶部搜索栏
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    const Icon(Icons.search, color: Colors.grey, size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '搜索账单/备注/分类',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // 其余内容（摘要卡片、预算卡片、分组账单列表等）
+            Expanded(child: _screens[_selectedIndex]),
+          ],
+        ),
       ),
-      body: _screens[_selectedIndex],
+      // 只在首页显示"记一笔"按钮，且修复跳转逻辑
+      floatingActionButton:
+          _selectedIndex == 0
+              ? Stack(
+                children: [
+                  Positioned(
+                    right: 4,
+                    bottom: 80, // 保持上移，避免遮挡底部导航栏
+                    child: Material(
+                      color: Colors.transparent,
+                      elevation: 12,
+                      borderRadius: BorderRadius.circular(24),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(24),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => const AddTransactionScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFEEF0FF), Color(0xFFD6D8F6)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(
+                                  (0.1 * 255).round(),
+                                ),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.add,
+                                color: Color(0xFF5B5BFF),
+                                size: 24,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                '记一笔',
+                                style: TextStyle(
+                                  color: Color(0xFF5B5BFF),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+              : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -107,18 +203,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddTransactionScreen(),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
@@ -151,7 +235,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      // TODO: 查看所有交易
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AllTransactionsScreen(),
+                        ),
+                      );
                     },
                     child: const Text('查看全部'),
                   ),
@@ -165,10 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   provider.transactions.isEmpty
                       ? const Center(child: Text('暂无交易记录，点击下方 + 按钮添加'))
                       : ListView.builder(
-                        itemCount:
-                            provider.transactions.length > 5
-                                ? 5
-                                : provider.transactions.length,
+                        itemCount: provider.transactions.length,
                         itemBuilder: (context, index) {
                           final transaction = provider.transactions[index];
                           return TransactionListItem(
@@ -207,16 +293,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ],
                                     ),
                               );
-
                               if (confirmed == true) {
-                                await provider.deleteTransaction(
-                                  transaction.id,
-                                );
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('交易记录已删除')),
-                                  );
-                                }
+                                await Provider.of<TransactionProvider>(
+                                  context,
+                                  listen: false,
+                                ).deleteTransaction(transaction.id);
                               }
                             },
                           );
@@ -226,6 +307,307 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+// 新增：全部交易页面
+class AllTransactionsScreen extends StatefulWidget {
+  const AllTransactionsScreen({super.key});
+
+  @override
+  State<AllTransactionsScreen> createState() => _AllTransactionsScreenState();
+}
+
+class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
+  // 筛选条件
+  DateTimeRange? _dateRange;
+  Set<Category> _selectedCategories = {};
+  Set<TransactionType> _selectedTypes = {
+    TransactionType.expense,
+    TransactionType.income,
+  };
+
+  // 日期筛选弹窗
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: _dateRange,
+    );
+    if (picked != null) {
+      setState(() {
+        _dateRange = picked;
+      });
+    }
+  }
+
+  // 类型多选弹窗
+  Future<void> _pickTypes() async {
+    final selected = Set<TransactionType>.from(_selectedTypes);
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('选择类型'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    TransactionType.values.map((type) {
+                      return CheckboxListTile(
+                        value: selected.contains(type),
+                        title: Text(
+                          type == TransactionType.expense ? '支出' : '收入',
+                        ),
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              selected.add(type);
+                            } else {
+                              selected.remove(type);
+                            }
+                          });
+                          // 立即生效并关闭弹窗
+                          this.setState(() {
+                            _selectedTypes = Set<TransactionType>.from(
+                              selected,
+                            );
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('取消'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 分类多选弹窗
+  Future<void> _pickCategories() async {
+    final allCategories = Category.values;
+    final selected = Set<Category>.from(_selectedCategories);
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('选择分类'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children:
+                      allCategories.map((cat) {
+                        return CheckboxListTile(
+                          value: selected.contains(cat),
+                          title: Text(FormatUtil.getCategoryName(cat)),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                selected.add(cat);
+                              } else {
+                                selected.remove(cat);
+                              }
+                            });
+                            // 立即生效并关闭弹窗
+                            this.setState(() {
+                              _selectedCategories = Set<Category>.from(
+                                selected,
+                              );
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('取消'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 过滤账单
+  List<Transaction> _filterTransactions(List<Transaction> all) {
+    return all.where((t) {
+      if (_dateRange != null) {
+        if (t.date.isBefore(_dateRange!.start) ||
+            t.date.isAfter(_dateRange!.end)) {
+          return false;
+        }
+      }
+      if (_selectedCategories.isNotEmpty &&
+          !_selectedCategories.contains(t.category)) {
+        return false;
+      }
+      if (_selectedTypes.isNotEmpty && !_selectedTypes.contains(t.type)) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color mainColor = Colors.green;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('账单'),
+        centerTitle: true,
+        backgroundColor: mainColor,
+        elevation: 0.5,
+      ),
+      body: Consumer<TransactionProvider>(
+        builder: (context, provider, child) {
+          final filtered = _filterTransactions(provider.transactions);
+
+          return Column(
+            children: [
+              // 筛选栏
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    _buildFilterButton(
+                      '日期',
+                      onTap: _pickDateRange,
+                      selected: _dateRange != null,
+                      mainColor: mainColor,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterButton(
+                      '分类',
+                      onTap: _pickCategories,
+                      selected: _selectedCategories.isNotEmpty,
+                      mainColor: mainColor,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterButton(
+                      '类型',
+                      onTap: _pickTypes,
+                      selected:
+                          _selectedTypes.length !=
+                          TransactionType.values.length,
+                      mainColor: mainColor,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // 账单列表
+              Expanded(
+                child:
+                    filtered.isEmpty
+                        ? const Center(child: Text('暂无符合条件的账单'))
+                        : ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (context, idx) {
+                            final t = filtered[idx];
+                            return TransactionListItem(
+                              transaction: t,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => TransactionDetailScreen(
+                                          transaction: t,
+                                        ),
+                                  ),
+                                );
+                              },
+                              onDelete: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder:
+                                      (context) => AlertDialog(
+                                        title: const Text('确认删除'),
+                                        content: const Text('确定要删除这条交易记录吗？'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                            child: const Text('取消'),
+                                          ),
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                            child: const Text('删除'),
+                                          ),
+                                        ],
+                                      ),
+                                );
+                                if (confirmed == true) {
+                                  await Provider.of<TransactionProvider>(
+                                    context,
+                                    listen: false,
+                                  ).deleteTransaction(t.id);
+                                }
+                              },
+                            );
+                          },
+                        ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(
+    String label, {
+    required VoidCallback onTap,
+    bool selected = false,
+    required Color mainColor,
+  }) {
+    return Expanded(
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          backgroundColor:
+              selected
+                  ? mainColor.withAlpha((0.08 * 255).toInt())
+                  : Colors.white,
+          side: BorderSide(color: selected ? mainColor : Colors.grey.shade300),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? mainColor : Colors.black87,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
     );
   }
 }

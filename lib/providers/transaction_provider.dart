@@ -94,7 +94,36 @@ class TransactionProvider with ChangeNotifier {
       // 检查大额支出提醒
       await notificationManager.sendLargeExpenseAlert(transaction);
 
-      // TODO: 检查预算警告（需要实现预算功能后添加）
+      // 检查预算警告（需要实现预算功能后添加）
+      // 仅对支出类型交易进行预算检查
+      if (transaction.type == TransactionType.expense) {
+        final prefs = await SharedPreferences.getInstance();
+        final baseCurrency = prefs.getString('defaultInputCurrency') ?? 'CNY';
+        // 获取该类别的预算（单位为基准货币）
+        final budgetKey = 'budget_${transaction.category.name}';
+        final budgetLimit = prefs.getDouble(budgetKey);
+        if (budgetLimit != null && budgetLimit > 0) {
+          // 统计本月该类别的总支出（已转换为基准货币）
+          final now = DateTime.now();
+          final monthStart = DateTime(now.year, now.month, 1);
+          double categoryExpense = 0;
+          for (final t in _convertedExpenseTransactions) {
+            if (t.category == transaction.category &&
+                t.date.isAfter(monthStart.subtract(const Duration(days: 1))) &&
+                t.date.isBefore(now.add(const Duration(days: 1)))) {
+              categoryExpense += t.amount;
+            }
+          }
+          final percentage = categoryExpense / budgetLimit * 100;
+          // 发送预算警告通知
+          await notificationManager.sendBudgetWarning(
+            category: transaction.category.name,
+            currentAmount: categoryExpense,
+            budgetLimit: budgetLimit,
+            percentage: percentage,
+          );
+        }
+      }
     } catch (e) {
       // print('添加交易记录时出错: $e');
       rethrow;
@@ -255,8 +284,6 @@ class TransactionProvider with ChangeNotifier {
     }
   }
 
-
-
   // 刷新汇率并重新计算
   Future<void> refreshExchangeRates() async {
     if (_transactions.isNotEmpty) {
@@ -294,5 +321,13 @@ class TransactionProvider with ChangeNotifier {
   // 获取所有使用的货币列表
   Set<String> getUsedCurrencies() {
     return _transactions.map((t) => t.currency).toSet();
+  }
+
+  // 批量插入交易记录（用于导入）
+  Future<void> batchInsertTransactions(List<Transaction> transactions) async {
+    for (final t in transactions) {
+      await _databaseService.insertTransaction(t);
+    }
+    await loadTransactions();
   }
 }

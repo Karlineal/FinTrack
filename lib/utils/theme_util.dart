@@ -331,6 +331,44 @@ class ThemeUtil {
         return chartColors[8];
       case Category.other:
         return chartColors[9];
+      case Category.takeout:
+        return chartColors[10 % chartColors.length];
+      case Category.daily:
+        return chartColors[11 % chartColors.length];
+      case Category.pets:
+        return chartColors[12 % chartColors.length];
+      case Category.campus:
+        return chartColors[13 % chartColors.length];
+      case Category.phone:
+        return chartColors[14 % chartColors.length];
+      case Category.drinks:
+        return chartColors[15 % chartColors.length];
+      case Category.study:
+        return chartColors[16 % chartColors.length];
+      case Category.clothes:
+        return chartColors[17 % chartColors.length];
+      case Category.internet:
+        return chartColors[18 % chartColors.length];
+      case Category.snacks:
+        return chartColors[19 % chartColors.length];
+      case Category.digital:
+        return chartColors[20 % chartColors.length];
+      case Category.beauty:
+        return chartColors[21 % chartColors.length];
+      case Category.smoke:
+        return chartColors[22 % chartColors.length];
+      case Category.sports:
+        return chartColors[23 % chartColors.length];
+      case Category.travel:
+        return chartColors[24 % chartColors.length];
+      case Category.water:
+        return chartColors[25 % chartColors.length];
+      case Category.fastmail:
+        return chartColors[26 % chartColors.length];
+      case Category.rent:
+        return chartColors[27 % chartColors.length];
+      case Category.otherExpense:
+        return chartColors[28 % chartColors.length];
     }
   }
 }
