@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/format_util.dart';
 import '../utils/theme_util.dart';
+import '../services/exchange_rate_service.dart';
 
 class SummaryCard extends StatelessWidget {
   final double income;
@@ -69,7 +70,7 @@ class SummaryCard extends StatelessWidget {
             Text(
               FormatUtil.formatCurrency(
                 balance,
-                currencySymbol: currencySymbol,
+                currencyCode: _getCurrencyCodeFromSymbol(currencySymbol),
               ),
               style: const TextStyle(
                 color: Colors.white,
@@ -87,7 +88,7 @@ class SummaryCard extends StatelessWidget {
                   '收入',
                   FormatUtil.formatCurrency(
                     income,
-                    currencySymbol: currencySymbol,
+                    currencyCode: _getCurrencyCodeFromSymbol(currencySymbol),
                   ),
                   Icons.arrow_upward,
                   Colors.white,
@@ -98,7 +99,7 @@ class SummaryCard extends StatelessWidget {
                   '支出',
                   FormatUtil.formatCurrency(
                     expense,
-                    currencySymbol: currencySymbol,
+                    currencyCode: _getCurrencyCodeFromSymbol(currencySymbol),
                   ),
                   Icons.arrow_downward,
                   Colors.white70,
@@ -151,5 +152,17 @@ class SummaryCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  // 从货币符号获取货币代码
+  String _getCurrencyCodeFromSymbol(String symbol) {
+    // 遍历支持的货币映射，找到对应的货币代码
+    for (final entry in ExchangeRateService.supportedCurrencies.entries) {
+      if (entry.value == symbol) {
+        return entry.key;
+      }
+    }
+    // 如果找不到匹配的符号，默认返回CNY
+    return 'CNY';
   }
 }

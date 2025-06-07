@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'providers/transaction_provider.dart';
 import 'screens/home_screen.dart';
 import 'utils/theme_util.dart';
+import 'services/notification_manager.dart';
 
 // ThemeProvider 用于管理应用的主题状态
 class ThemeProvider extends ChangeNotifier {
@@ -25,6 +26,18 @@ void main() async {
   // 为Web平台初始化sqflite
   if (kIsWeb) {
     databaseFactory = databaseFactoryFfiWeb;
+  }
+
+  // 初始化通知服务
+  try {
+    await NotificationManager().initialize();
+    if (kDebugMode) {
+      debugPrint('NotificationManager initialized successfully');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('Failed to initialize NotificationManager: $e');
+    }
   }
 
   runApp(const MyApp());

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
+import '../services/exchange_rate_service.dart'; // 导入 ExchangeRateService
 
 class FormatUtil {
   // 格式化货币
-  static String formatCurrency(double amount, {String currencySymbol = '¥'}) {
-    // 根据提供的 currencySymbol 调整 locale 可能更健壮，但这里为了简单起见，仅替换 symbol
-    // 对于更复杂的国际化需求，可能需要更完善的 locale 管理
+  static String formatCurrency(double amount, {String currencyCode = 'CNY'}) {
+    // 获取货币符号
+    final String symbol = ExchangeRateService.getCurrencySymbol(currencyCode);
+
     final formatter = NumberFormat.currency(
       locale: 'zh_CN',
-      symbol: currencySymbol,
+      symbol: symbol, // 使用获取到的货币符号
     );
     return formatter.format(amount);
   }

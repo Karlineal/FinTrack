@@ -39,13 +39,11 @@ class Transaction {
 
   // 从Map创建Transaction对象（用于数据库操作）
   factory Transaction.fromMap(Map<String, dynamic> map) {
-    // 获取货币符号，确保是有效的
-    String currencySymbol = map['currency'] ?? '¥';
-    // 如果货币符号不在支持的列表中，使用默认的第一个
-    if (!ExchangeRateService.supportedCurrencies.values.contains(
-      currencySymbol,
-    )) {
-      currencySymbol = ExchangeRateService.supportedCurrencies.values.first;
+    // 获取货币代码，确保是有效的
+    String currencyCode = map['currency'] ?? 'CNY'; // 默认使用CNY代码
+    // 如果货币代码不在支持的列表中，使用默认的第一个
+    if (!ExchangeRateService.supportedCurrencies.keys.contains(currencyCode)) {
+      currencyCode = ExchangeRateService.supportedCurrencies.keys.first;
     }
 
     return Transaction(
@@ -56,7 +54,7 @@ class Transaction {
       type: TransactionType.values.byName(map['type']),
       category: Category.values.byName(map['category']),
       note: map['note'],
-      currency: currencySymbol, // 使用有效的货币符号
+      currency: currencyCode, // 使用有效的货币代码
     );
   }
 

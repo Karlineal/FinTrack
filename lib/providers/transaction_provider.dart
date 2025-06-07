@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transaction.dart';
 import '../services/database_service.dart';
 import '../services/exchange_rate_service.dart';
+import '../services/notification_manager.dart';
 
 class TransactionProvider with ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
@@ -83,6 +84,17 @@ class TransactionProvider with ChangeNotifier {
     try {
       await _databaseService.insertTransaction(transaction);
       await loadTransactions(); // 重新加载所有交易记录
+
+      // 发送通知
+      final notificationManager = NotificationManager();
+
+      // 发送交易成功通知
+      await notificationManager.sendTransactionSuccessNotification(transaction);
+
+      // 检查大额支出提醒
+      await notificationManager.sendLargeExpenseAlert(transaction);
+
+      // TODO: 检查预算警告（需要实现预算功能后添加）
     } catch (e) {
       // print('添加交易记录时出错: $e');
       rethrow;
@@ -208,16 +220,14 @@ class TransactionProvider with ChangeNotifier {
   Future<void> _convertTransactionsToBased() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final baseCurrency = _getCurrencyCodeFromSymbol(
-        prefs.getString('currency') ?? '¥',
-      );
+      // 直接从 SharedPreferences 获取基准货币代码
+      final baseCurrency = prefs.getString('defaultInputCurrency') ?? 'CNY';
 
       _convertedTransactions = [];
 
       for (final transaction in _transactions) {
-        final transactionCurrency = _getCurrencyCodeFromSymbol(
-          transaction.currency,
-        );
+        final transactionCurrency =
+            transaction.currency; // transaction.currency 已经是货币代码
 
         if (transactionCurrency == baseCurrency) {
           // 相同货币，直接添加
@@ -230,10 +240,10 @@ class TransactionProvider with ChangeNotifier {
             baseCurrency,
           );
 
-          // 创建转换后的交易记录副本
+          // 创建转换后的交易记录副本，currency 字段保持为基准货币代码
           final convertedTransaction = transaction.copyWith(
             amount: convertedAmount,
-            currency: _getCurrencySymbolFromCode(baseCurrency),
+            currency: baseCurrency, // 存储基准货币代码
           );
 
           _convertedTransactions.add(convertedTransaction);
@@ -245,20 +255,7 @@ class TransactionProvider with ChangeNotifier {
     }
   }
 
-  // 从货币符号获取货币代码
-  String _getCurrencyCodeFromSymbol(String symbol) {
-    for (final entry in ExchangeRateService.supportedCurrencies.entries) {
-      if (entry.value == symbol) {
-        return entry.key;
-      }
-    }
-    return 'CNY'; // 默认返回CNY
-  }
 
-  // 从货币代码获取货币符号
-  String _getCurrencySymbolFromCode(String code) {
-    return ExchangeRateService.getCurrencySymbol(code);
-  }
 
   // 刷新汇率并重新计算
   Future<void> refreshExchangeRates() async {

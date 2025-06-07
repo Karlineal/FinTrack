@@ -57,7 +57,7 @@ class ThemeUtil {
         onError: Colors.white,
       ),
       scaffoldBackgroundColor: lightBackgroundColor,
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: lightCardColor,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -189,7 +189,7 @@ class ThemeUtil {
         onError: Colors.white, // Text on error color
       ),
       scaffoldBackgroundColor: darkBackgroundColor,
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: darkCardColor,
         elevation: 2,
         shape: RoundedRectangleBorder(

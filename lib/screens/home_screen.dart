@@ -8,6 +8,7 @@ import 'transaction_detail_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 导入 SharedPreferences
+import '../services/exchange_rate_service.dart'; // 导入 ExchangeRateService
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,17 +19,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final List<Widget> _screens = [];
+  late List<Widget> _screens;
   String _currencySymbol = '¥'; // 添加状态变量存储货币符号
 
   @override
   void initState() {
     super.initState();
+    // 先初始化屏幕列表，确保_screens不为空
+    _screens = [
+      _buildHomeContent(),
+      const StatisticsScreen(),
+      const SettingsScreen(),
+    ];
     _loadCurrencyPreference(); // 加载货币偏好
-    // 初始化屏幕列表
-    // _buildHomeContent() 需要 _currencySymbol，所以确保它在 _screens 初始化时可用
-    // 或者将 _buildHomeContent 的构建延迟到 _currencySymbol 加载后
-    // 为了简单起见，暂时先这样，后续可能需要调整确保 _currencySymbol 在构建时已加载
 
     // 加载交易数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,7 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       // 检查 widget 是否仍然挂载
       setState(() {
-        _currencySymbol = prefs.getString('currency') ?? '¥';
+        // 从defaultInputCurrency获取货币代码，然后转换为符号
+        final currencyCode = prefs.getString('defaultInputCurrency') ?? 'CNY';
+        _currencySymbol = ExchangeRateService.getCurrencySymbol(currencyCode);
         // 更新 _screens 列表中的 _buildHomeContent，以确保它使用最新的 _currencySymbol
         // 这是一个简化的处理，更健壮的方式可能是在 _buildHomeContent 中直接使用 _currencySymbol
         // 或者通过其他状态管理方式传递

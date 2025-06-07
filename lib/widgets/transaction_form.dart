@@ -43,25 +43,25 @@ class _TransactionFormState extends State<TransactionForm> {
       _type = widget.initialTransaction!.type;
       _category = widget.initialTransaction!.category;
       _date = widget.initialTransaction!.date;
-      // 确保货币符号在支持的列表中
+      // 确保货币代码在支持的列表中
       _selectedCurrency =
-          ExchangeRateService.supportedCurrencies.values.contains(
-                widget.initialTransaction!.currency,
+          ExchangeRateService.supportedCurrencies.keys.contains(
+                widget.initialTransaction!.currency, // 检查货币代码
               )
               ? widget.initialTransaction!.currency
-              : ExchangeRateService.supportedCurrencies.values.first;
+              : ExchangeRateService.supportedCurrencies.keys.first; // 使用货币代码
     } else {
       // 默认值
       _type = TransactionType.expense;
       _category = Category.food;
       _date = DateTime.now();
-      // 确保货币符号在支持的列表中，如果widget.currency不在列表中，使用默认的第一个
+      // 确保货币代码在支持的列表中，如果widget.currency不在列表中，使用默认的第一个
       _selectedCurrency =
-          ExchangeRateService.supportedCurrencies.values.contains(
-                widget.currency,
+          ExchangeRateService.supportedCurrencies.keys.contains(
+                widget.currency, // 检查货币代码
               )
               ? widget.currency
-              : ExchangeRateService.supportedCurrencies.values.first;
+              : ExchangeRateService.supportedCurrencies.keys.first; // 使用货币代码
     }
   }
 
@@ -99,7 +99,7 @@ class _TransactionFormState extends State<TransactionForm> {
         type: _type,
         category: _category,
         note: _noteController.text.isEmpty ? null : _noteController.text,
-        currency: _selectedCurrency, // 使用用户选择的货币
+        currency: _selectedCurrency, // 使用用户选择的货币代码
       );
 
       widget.onSubmit(transaction);
@@ -137,15 +137,20 @@ class _TransactionFormState extends State<TransactionForm> {
           Row(
             children: [
               Expanded(
-                flex: 3,
+                flex: 3, // 调整flex比例
                 child: TextFormField(
                   controller: _amountController,
                   decoration: InputDecoration(
                     labelText: '金额',
                     prefixIcon: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4.0,
+                        vertical: 8.0,
+                      ), // 调整 padding
                       child: Text(
-                        _selectedCurrency,
+                        ExchangeRateService
+                                .supportedCurrencies[_selectedCurrency] ??
+                            _selectedCurrency, // 显示货币符号
                         style: const TextStyle(fontSize: 18),
                       ),
                     ),
@@ -174,26 +179,34 @@ class _TransactionFormState extends State<TransactionForm> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                flex: 2,
+                flex: 2, // 调整flex比例
                 child: DropdownButtonFormField<String>(
-                  value: _selectedCurrency,
+                  value: _selectedCurrency, // value 绑定为货币代码
+                  isExpanded: true, // 添加 isExpanded 属性
                   decoration: const InputDecoration(
-                    labelText: '货币',
-                    prefixIcon: Icon(Icons.monetization_on),
+                    // 恢复 decoration 属性
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                    ), // 调整内边距
                   ),
                   items:
                       ExchangeRateService.supportedCurrencies.entries
                           .map(
                             (entry) => DropdownMenuItem<String>(
-                              value: entry.value, // 货币符号作为值
-                              child: Text('${entry.value} (${entry.key})'),
+                              value:
+                                  entry.key, // DropdownMenuItem 的 value 也使用货币代码
+                              child: Text(
+                                entry.key, // 仅显示货币代码
+                                overflow: TextOverflow.ellipsis, // 添加文本溢出处理
+                                maxLines: 1, // 限制为单行
+                              ),
                             ),
                           )
                           .toList(),
                   onChanged: (value) {
                     if (value != null) {
                       setState(() {
-                        _selectedCurrency = value;
+                        _selectedCurrency = value; // 更新为货币代码
                       });
                     }
                   },

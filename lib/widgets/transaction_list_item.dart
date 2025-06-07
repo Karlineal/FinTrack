@@ -78,7 +78,7 @@ class TransactionListItem extends StatelessWidget {
               ),
               // 金额
               Text(
-                '$sign${FormatUtil.formatCurrency(transaction.amount, currencySymbol: transaction.currency)}',
+                '$sign${FormatUtil.formatCurrency(transaction.amount, currencyCode: transaction.currency)}', // 将 currencySymbol 改为 currencyCode
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: color,
                   fontWeight: FontWeight.bold,

@@ -83,7 +83,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 Text(
                   FormatUtil.formatCurrency(
                     widget.transaction.amount,
-                    currencySymbol: widget.transaction.currency,
+                    currencyCode:
+                        widget.transaction.currency, // 使用 currencyCode
                   ),
                   style: textTheme.headlineMedium?.copyWith(color: amountColor),
                 ),
@@ -164,37 +165,31 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           widget.transaction, // Changed 'transaction' to 'initialTransaction'
       currency: _globalCurrencySymbol, // 传递全局货币符号
       onSubmit: (updatedTransaction) async {
-        // Store the BuildContext before the async gap.
-        final scaffoldMessenger = ScaffoldMessenger.of(context);
-        // final navigator = Navigator.of(context); // Removed unused navigator
+        final provider = Provider.of<TransactionProvider>(
+          context,
+          listen: false,
+        );
         try {
-          if (!mounted) return; // Added mounted check
-          await Provider.of<TransactionProvider>(
-            context,
-            listen: false,
-          ).updateTransaction(updatedTransaction);
+          await provider.updateTransaction(updatedTransaction);
+
           if (!mounted) return;
-          scaffoldMessenger.showSnackBar(
-            const SnackBar(content: Text('交易记录已更新')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('交易记录已更新')));
           setState(() {
             _isEditing = false;
           });
         } catch (e) {
           if (!mounted) return;
-          scaffoldMessenger.showSnackBar(SnackBar(content: Text('更新失败: $e')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('更新失败: $e')));
         }
       },
     );
   }
 
   void _confirmDelete(BuildContext context) async {
-    // Store the BuildContext and Navigator before the async gap.
-    final navigator = Navigator.of(
-      context,
-    ); // This navigator is used later for pop()
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -215,23 +210,19 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
 
     if (confirmed == true) {
+      // 在异步操作之后，但在使用 BuildContext 之前，检查 mounted
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      final provider = Provider.of<TransactionProvider>(context, listen: false);
+
       try {
-        if (!mounted) return; // Guard access to context for Provider
-        await Provider.of<TransactionProvider>(
-          context,
-          listen: false,
-        ).deleteTransaction(widget.transaction.id);
-        if (!mounted) return;
+        await provider.deleteTransaction(widget.transaction.id);
         scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('交易记录已删除')),
         );
-        // The navigator.pop() call needs to be guarded as well if context might be invalid
-        // The navigator variable itself captured the context from before the async gap.
-        // However, the action of popping uses the current context state.
-        if (!mounted) return;
         navigator.pop();
       } catch (e) {
-        if (!mounted) return;
         scaffoldMessenger.showSnackBar(SnackBar(content: Text('删除失败: $e')));
       }
     }
