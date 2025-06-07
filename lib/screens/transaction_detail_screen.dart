@@ -39,106 +39,148 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('交易详情'),
-        actions: [
-          IconButton(
-            icon: Icon(_isEditing ? Icons.close : Icons.edit),
-            onPressed: () {
-              setState(() {
-                _isEditing = !_isEditing;
-              });
-            },
-          ),
-        ],
+        automaticallyImplyLeading: true, // 只保留返回按钮
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        // 不显示标题和右侧icon
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child:
             _isEditing ? _buildEditForm() : _buildTransactionDetails(context),
       ),
+      bottomNavigationBar:
+          !_isEditing
+              ? Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _confirmDelete(context),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.grey.shade400,
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text(
+                          '删除',
+                          style: TextStyle(fontSize: 18, color: Colors.black54),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _isEditing = true;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('修改', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              : null,
     );
   }
 
   Widget _buildTransactionDetails(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-
     final amountColor =
         widget.transaction.type == TransactionType.income
             ? Colors.green
             : Colors.red;
+    final iconData = FormatUtil.getCategoryIcon(widget.transaction.category);
+    final iconColor = Colors.pink.shade200;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题和金额
+        // 顶部卡片：icon+分类名+金额
         Card(
           elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(widget.transaction.title, style: textTheme.headlineSmall),
-                const SizedBox(height: 8),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(iconData, color: Colors.white, size: 32),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Text(
+                    FormatUtil.getCategoryName(widget.transaction.category),
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 Text(
                   FormatUtil.formatCurrency(
                     widget.transaction.amount,
-                    currencyCode:
-                        widget.transaction.currency, // 使用 currencyCode
+                    currencyCode: widget.transaction.currency,
                   ),
-                  style: textTheme.headlineMedium?.copyWith(color: amountColor),
+                  style: textTheme.headlineSmall?.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-
-        const SizedBox(height: 16),
-
-        // 详细信息
+        const SizedBox(height: 24),
+        // 下部卡片：详细信息
         Card(
           elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Column(
               children: [
-                _buildDetailRow(
-                  '类别',
-                  FormatUtil.getCategoryName(widget.transaction.category),
-                ),
-                const Divider(),
-                _buildDetailRow(
-                  '日期',
-                  FormatUtil.formatDate(widget.transaction.date),
-                ),
-                const Divider(),
                 _buildDetailRow(
                   '类型',
                   FormatUtil.getTransactionTypeName(widget.transaction.type),
                 ),
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  '日期',
+                  FormatUtil.formatDate(widget.transaction.date),
+                ),
                 if (widget.transaction.note != null &&
                     widget.transaction.note!.isNotEmpty) ...[
-                  const Divider(),
+                  const SizedBox(height: 12),
                   _buildDetailRow('备注', widget.transaction.note!),
                 ],
               ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // 删除按钮
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _confirmDelete(context),
-            icon: const Icon(Icons.delete, color: Colors.white),
-            label: const Text('删除交易'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
         ),
@@ -146,16 +188,23 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-          Text(value, style: const TextStyle(fontSize: 16)),
-        ],
-      ),
+  Widget _buildDetailRow(String label, String value, {String? rightLabel}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 16, color: Colors.black87),
+        ),
+        Flexible(
+          child: Text(
+            rightLabel ?? value,
+            style: const TextStyle(fontSize: 16, color: Colors.black54),
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 

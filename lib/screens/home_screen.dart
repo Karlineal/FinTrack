@@ -88,30 +88,34 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 顶部搜索栏
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    const Icon(Icons.search, color: Colors.grey, size: 22),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '搜索账单/备注/分类',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 16),
+            // 顶部搜索栏只在首页tab显示
+            if (_selectedIndex == 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      const Icon(Icons.search, color: Colors.grey, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '搜索账单/备注/分类',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
             // 其余内容（摘要卡片、预算卡片、分组账单列表等）
             Expanded(child: _screens[_selectedIndex]),
           ],

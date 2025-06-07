@@ -25,6 +25,7 @@ class TransactionListItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onDelete,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -77,25 +78,17 @@ class TransactionListItem extends StatelessWidget {
                 ),
               ),
               // 金额
-              Text(
-                '$sign${FormatUtil.formatCurrency(transaction.amount, currencyCode: transaction.currency)}', // 将 currencySymbol 改为 currencyCode
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  '$sign${FormatUtil.formatCurrency(transaction.amount, currencyCode: transaction.currency)}',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // 删除按钮
-              if (onDelete != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_outline,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  onPressed: onDelete,
-                  splashRadius: 24,
-                ),
-              ],
             ],
           ),
         ),

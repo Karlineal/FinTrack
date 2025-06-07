@@ -135,276 +135,363 @@ class _TransactionFormState extends State<TransactionForm> {
               Category.gift, // 礼物
               Category.fastmail, // 快递
               Category.rent, // 房租
-              Category.salary, // 工资
-              Category.otherExpense, // 其他支出
               Category.other, // 其他
             ]
             : [Category.salary, Category.gift, Category.other];
 
+    // 保证切换类型时分类不会越界
+    if (!categories.contains(_category)) {
+      _category = categories.first;
+    }
+
+    final Color mainGreen = const Color(0xFF34C759); // 柔和绿色
+    final Color mainGreenDark = const Color(0xFF30B158);
+    final Color mainRed = const Color(0xFFFF3B30);
+
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 顶部自定义Tab+关闭按钮
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 28),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  const Spacer(),
-                  ToggleButtons(
-                    borderRadius: BorderRadius.circular(20),
-                    isSelected: [
-                      _type == TransactionType.expense,
-                      _type == TransactionType.income,
-                    ],
-                    onPressed: (index) {
-                      setState(() {
-                        _type =
-                            index == 0
-                                ? TransactionType.expense
-                                : TransactionType.income;
-                      });
-                    },
-                    selectedColor: Colors.white,
-                    fillColor:
-                        _type == TransactionType.expense
-                            ? ThemeUtil.expenseColor
-                            : ThemeUtil.incomeColor,
-                    color: Colors.grey[600],
-                    constraints: const BoxConstraints(
-                      minWidth: 80,
-                      minHeight: 36,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF8FFF6), Color(0xFFE6F9ED)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 顶部自定义Tab+关闭按钮
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 28),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
-                    children: const [
-                      Text(
-                        '支出',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '收入',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(flex: 2),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // 类别选择区（支出/收入类别分开，支出更丰富，支持滑动）
-              SizedBox(
-                height: 320,
-                child: GridView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 1.1,
-                  ),
-                  itemCount: categories.length,
-                  itemBuilder: (context, idx) {
-                    final category = categories[idx];
-                    final selected = _category == category;
-                    return GestureDetector(
-                      onTap: () {
+                    const Spacer(),
+                    ToggleButtons(
+                      borderRadius: BorderRadius.circular(20),
+                      isSelected: [
+                        _type == TransactionType.expense,
+                        _type == TransactionType.income,
+                      ],
+                      onPressed: (index) {
                         setState(() {
-                          _category = category;
+                          _type =
+                              index == 0
+                                  ? TransactionType.expense
+                                  : TransactionType.income;
                         });
                       },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color:
-                              selected
-                                  ? (_type == TransactionType.income
-                                      ? ThemeUtil.incomeColor
-                                      : ThemeUtil.expenseColor)
-                                  : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(22),
+                      selectedColor: Colors.white,
+                      fillColor:
+                          _type == TransactionType.expense
+                              ? mainRed
+                              : mainGreen,
+                      color: Colors.grey[600],
+                      constraints: const BoxConstraints(
+                        minWidth: 80,
+                        minHeight: 36,
+                      ),
+                      children: const [
+                        Text(
+                          '支出',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              FormatUtil.getCategoryIcon(category),
-                              size: 24,
-                              color: selected ? Colors.white : Colors.black87,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              FormatUtil.getCategoryName(category),
-                              style: TextStyle(
-                                fontSize: 13,
+                        Text(
+                          '收入',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(flex: 2),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 类别选择区（支出/收入类别分开，支出更丰富，支持滑动）
+                SizedBox(
+                  height: isExpense ? 320 : 100,
+                  child: GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1.1,
+                    ),
+                    itemCount: categories.length,
+                    itemBuilder: (context, idx) {
+                      final category = categories[idx];
+                      final selected = _category == category;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _category = category;
+                          });
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                selected
+                                    ? (_type == TransactionType.income
+                                        ? mainGreen
+                                        : mainRed.withOpacity(0.85))
+                                    : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow:
+                                selected
+                                    ? [
+                                      BoxShadow(
+                                        color: (_type == TransactionType.income
+                                                ? mainGreen
+                                                : mainRed)
+                                            .withAlpha(30),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                    : [],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                FormatUtil.getCategoryIcon(category),
+                                size: 24,
                                 color: selected ? Colors.white : Colors.black87,
-                                fontWeight:
-                                    selected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              const SizedBox(height: 4),
+                              Text(
+                                FormatUtil.getCategoryName(category),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color:
+                                      selected ? Colors.white : Colors.black87,
+                                  fontWeight:
+                                      selected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // 金额与货币类型并列
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 56,
+                        child: TextFormField(
+                          controller: _amountController,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.1,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(16),
+                              ),
+                              borderSide: BorderSide(
+                                color: mainGreen,
+                                width: 1.2,
+                              ),
+                            ),
+                            hintText: '0.0',
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 16,
+                                right: 8,
+                              ),
+                              child: Text(
+                                ExchangeRateService.getCurrencySymbol(
+                                  _selectedCurrency,
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            prefixIconConstraints: const BoxConstraints(
+                              minWidth: 0,
+                              minHeight: 0,
+                            ),
+                            hintStyle: const TextStyle(
+                              fontSize: 20,
+                              color: Colors.grey,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                            ),
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[\d\.]'),
                             ),
                           ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-              // 金额与货币类型并列
-              Row(
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: SizedBox(
-                      height: 56,
-                      child: TextFormField(
-                        controller: _amountController,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.1,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(16)),
-                          ),
-                          hintText: '0.0',
-                          prefixText: '¥ ',
-                          hintStyle: TextStyle(
-                            fontSize: 20,
-                            color: Colors.grey,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[\d\.]')),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入金额';
-                          }
-                          try {
-                            final amount = double.parse(value);
-                            if (amount <= 0) {
-                              return '金额必须大于0';
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return '请输入金额';
                             }
-                          } catch (e) {
-                            return '请输入有效的金额';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 1,
-                    child: SizedBox(
-                      height: 56,
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedCurrency,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(16)),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 14,
-                          ),
+                            try {
+                              final amount = double.parse(value);
+                              if (amount <= 0) {
+                                return '金额必须大于0';
+                              }
+                            } catch (e) {
+                              return '请输入有效的金额';
+                            }
+                            return null;
+                          },
                         ),
-                        items:
-                            ExchangeRateService.supportedCurrencies.entries
-                                .map(
-                                  (entry) => DropdownMenuItem<String>(
-                                    value: entry.key,
-                                    child: Text(
-                                      entry.key,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedCurrency = value;
-                            });
-                          }
-                        },
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 56,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedCurrency,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(16),
+                              ),
+                              borderSide: BorderSide(
+                                color: mainGreen,
+                                width: 1.2,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 14,
+                            ),
+                          ),
+                          items:
+                              [
+                                    MapEntry(
+                                      'CNY',
+                                      ExchangeRateService
+                                              .supportedCurrencies['CNY'] ??
+                                          '¥',
+                                    ),
+                                    MapEntry(
+                                      'USD',
+                                      ExchangeRateService
+                                              .supportedCurrencies['USD'] ??
+                                          ' 24',
+                                    ),
+                                  ]
+                                  .map(
+                                    (entry) => DropdownMenuItem<String>(
+                                      value: entry.key,
+                                      child: Text(
+                                        entry.key,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedCurrency = value;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 日期选择
+                InkWell(
+                  onTap: _selectDate,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: '日期',
+                      prefixIcon: const Icon(Icons.calendar_today),
+                      border: OutlineInputBorder(
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(16),
+                        ),
+                        borderSide: BorderSide(color: mainGreen, width: 1.2),
+                      ),
+                    ),
+                    child: Text(
+                      FormatUtil.formatDate(_date),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // 日期选择
-              InkWell(
-                onTap: _selectDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: '日期',
-                    prefixIcon: Icon(Icons.calendar_today),
+                ),
+                const SizedBox(height: 16),
+                // 备注（单行）
+                TextFormField(
+                  controller: _noteController,
+                  decoration: InputDecoration(
+                    labelText: '备注',
+                    prefixIcon: const Icon(Icons.note),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                      borderRadius: const BorderRadius.all(Radius.circular(16)),
+                      borderSide: BorderSide(color: mainGreen, width: 1.2),
                     ),
                   ),
-                  child: Text(
-                    FormatUtil.formatDate(_date),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                  maxLines: 1,
                 ),
-              ),
-              const SizedBox(height: 16),
-              // 备注（单行）
-              TextFormField(
-                controller: _noteController,
-                decoration: const InputDecoration(
-                  labelText: '备注',
-                  prefixIcon: Icon(Icons.note),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                  ),
-                ),
-                maxLines: 1,
-              ),
-              const SizedBox(height: 24),
-              // 提交按钮
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                const SizedBox(height: 24),
+                // 提交按钮
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      elevation: 2,
+                      backgroundColor: mainGreen,
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    onPressed: _submitForm,
+                    child: Text(
+                      widget.initialTransaction == null ? '添加' : '更新',
                     ),
                   ),
-                  onPressed: _submitForm,
-                  child: Text(widget.initialTransaction == null ? '添加' : '更新'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

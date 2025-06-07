@@ -31,7 +31,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('添加交易')),
+      // appBar: AppBar(title: const Text('添加交易')), // 删除顶部标题
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
