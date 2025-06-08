@@ -17,6 +17,7 @@ dependencies:
   path: ^1.9.0
   # 状态管理
   provider: ^6.1.2
+  http: ^1.2.1
   # 日期格式化
   intl: ^0.19.0
   # 图表
@@ -27,8 +28,6 @@ dependencies:
   uuid: ^4.3.3
   # 图标
   font_awesome_flutter: ^10.7.0
-  # HTTP请求
-  http: ^1.2.1
   # 本地通知
   flutter_local_notifications: ^17.2.2
   # 时区支持
@@ -40,6 +39,7 @@ dependencies:
   file_picker: ^10.1.9
   csv: ^5.1.1
   grouped_list: ^6.0.0
+  flutter_screenutil: ^5.9.3
 
 dev_dependencies:
   flutter_test:
@@ -51,7 +51,6 @@ flutter:
   
   assets:
     - assets/images/
-    - assets/transactions.json
 
   # fonts:
   #   - family: Montserrat
