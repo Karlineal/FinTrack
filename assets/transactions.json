@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1",
+    "date": "2025-01-05",
+    "description": "工资",
+    "amount": 5000.00,
+    "type": "income",
+    "category": "职业收入"
+  },
+  {
+    "id": "2",
+    "date": "2025-01-06",
+    "description": "购买食材",
+    "amount": -75.50,
+    "type": "expense",
+    "category": "餐饮"
+  },
+  {
+    "id": "3",
+    "date": "2025-01-07",
+    "description": "电影票",
+    "amount": -120.00,
+    "type": "expense",
+    "category": "娱乐"
+  },
+  {
+    "id": "4",
+    "date": "2025-01-10",
+    "description": "交通卡充值",
+    "amount": -100.00,
+    "type": "expense",
+    "category": "交通"
+  },
+  {
+    "id": "5",
+    "date": "2025-01-15",
+    "description": "兼职收入",
+    "amount": 800.00,
+    "type": "income",
+    "category": "其他收入"
+  }
+] 

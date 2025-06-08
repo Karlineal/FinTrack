@@ -28,7 +28,7 @@ dependencies:
   # 图标
   font_awesome_flutter: ^10.7.0
   # HTTP请求
-  http: ^1.1.0
+  http: ^1.2.1
   # 本地通知
   flutter_local_notifications: ^17.2.2
   # 时区支持
@@ -51,6 +51,7 @@ flutter:
   
   assets:
     - assets/images/
+    - assets/transactions.json
 
   # fonts:
   #   - family: Montserrat
