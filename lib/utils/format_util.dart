@@ -7,13 +7,20 @@ class FormatUtil {
   // 格式化货币
   static String formatCurrency(double amount, {String currencyCode = 'CNY'}) {
     // 获取货币符号
-    final String symbol = ExchangeRateService.getCurrencySymbol(currencyCode);
-
-    final formatter = NumberFormat.currency(
-      locale: 'zh_CN',
-      symbol: symbol, // 使用获取到的货币符号
-    );
-    return formatter.format(amount);
+    final String symbol =
+        currencyCode == 'CNY'
+            ? ''
+            : ExchangeRateService.getCurrencySymbol(currencyCode);
+    String formattedAmount;
+    if (amount.truncateToDouble() == amount) {
+      formattedAmount = amount.toInt().toString();
+    } else {
+      formattedAmount = amount
+          .toStringAsFixed(2)
+          .replaceAll(RegExp(r'0+$'), '')
+          .replaceAll(RegExp(r'\.$'), '');
+    }
+    return symbol + formattedAmount;
   }
 
   // 格式化日期
@@ -26,9 +33,41 @@ class FormatUtil {
     return DateFormat('yyyy-MM-dd HH:mm').format(date);
   }
 
+  // 格式化日期为 MM/dd
+  static String formatDateForGroupHeader(DateTime date) {
+    return DateFormat('MM/dd').format(date);
+  }
+
+  // 获取相对日期字符串（今天/昨天）
+  static String getRelativeDayString(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) {
+      return '今天';
+    } else if (checkDate == yesterday) {
+      return '昨天';
+    }
+    return '';
+  }
+
   // 格式化时间
   static String formatTime(DateTime date) {
     return DateFormat('HH:mm').format(date);
+  }
+
+  // 智能格式化数字（整数不带小数，小数最多两位）
+  static String formatNumberSmart(double value) {
+    if (value.truncateToDouble() == value) {
+      return value.toInt().toString();
+    } else {
+      return value
+          .toStringAsFixed(2)
+          .replaceAll(RegExp(r'0+$'), '')
+          .replaceAll(RegExp(r'\.$'), '');
+    }
   }
 
   // 获取类别图标

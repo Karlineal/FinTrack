@@ -13,6 +13,7 @@ import '../services/exchange_rate_service.dart'; // 导入 ExchangeRateService
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
+import 'search_screen.dart';
 
 enum DateFilterOption { none, oneWeek, oneMonth, sixMonths, oneYear, custom }
 
@@ -25,63 +26,64 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  late List<Widget> _screens;
-  String _currencySymbol = '¥'; // 添加状态变量存储货币符号
+  String _currencySymbol = '¥'; // 默认货币符号
+  final PageController _pageController = PageController();
+  late ScrollController _scrollController;
+  bool _isFabExtended = true;
 
   @override
   void initState() {
     super.initState();
-    // 先初始化屏幕列表，确保_screens不为空
-    _screens = [
-      _buildHomeContent(),
-      const StatisticsScreen(),
-      const SettingsScreen(),
-    ];
-    _loadCurrencyPreference(); // 加载货币偏好
+    // 异步加载货币偏好
+    _loadCurrencyPreference();
+    // 初始化滚动控制器并添加监听器
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
 
-    // 加载交易数据
+    // 使用 provider 初始化数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<TransactionProvider>(
-        context,
-        listen: false,
-      ).loadTransactions();
-      // 在数据加载后，再次确保货币符号是最新的
-      // 这也处理了从设置页返回时可能需要更新符号的情况
-      _loadCurrencyPreference();
+      if (mounted) {
+        Provider.of<TransactionProvider>(
+          context,
+          listen: false,
+        ).loadTransactions();
+      }
     });
   }
 
-  Future<void> _loadCurrencyPreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      // 检查 widget 是否仍然挂载
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.offset > 50 && _isFabExtended) {
       setState(() {
-        // 从defaultInputCurrency获取货币代码，然后转换为符号
-        final currencyCode = prefs.getString('defaultInputCurrency') ?? 'CNY';
-        _currencySymbol = ExchangeRateService.getCurrencySymbol(currencyCode);
-        // 更新 _screens 列表中的 _buildHomeContent，以确保它使用最新的 _currencySymbol
-        // 这是一个简化的处理，更健壮的方式可能是在 _buildHomeContent 中直接使用 _currencySymbol
-        // 或者通过其他状态管理方式传递
-        _screens.clear();
-        _screens.addAll([
-          _buildHomeContent(), // 重建 _buildHomeContent
-          const StatisticsScreen(),
-          const SettingsScreen(),
-        ]);
+        _isFabExtended = false;
+      });
+    } else if (_scrollController.offset <= 50 && !_isFabExtended) {
+      setState(() {
+        _isFabExtended = true;
       });
     }
   }
 
-  // 当从设置页面返回时，也可能需要刷新货币符号
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 监听路由变化，如果从设置页返回，则重新加载货币偏好
-    // 这是一个简化的示例，实际应用中可能有更优雅的跨页面状态同步方式
-    final ModalRoute? route = ModalRoute.of(context);
-    if (route is PageRoute && route.isCurrent) {
-      // 尝试在每次页面变为当前时刷新，确保从设置返回时更新
-      _loadCurrencyPreference();
+  // 异步加载货币偏好
+  Future<void> _loadCurrencyPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currencyCode = prefs.getString('currency') ?? 'CNY';
+    if (mounted) {
+      setState(() {
+        _currencySymbol = ExchangeRateService.getCurrencySymbol(currencyCode);
+      });
+      // 加载后更新交易
+      await Provider.of<TransactionProvider>(
+        context,
+        listen: false,
+      ).loadTransactions();
     }
   }
 
@@ -89,120 +91,59 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            // 顶部搜索栏只在首页tab显示
-            if (_selectedIndex == 0)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      const Icon(Icons.search, color: Colors.grey, size: 22),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '搜索账单/备注/分类',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            // 其余内容（摘要卡片、预算卡片、分组账单列表等）
-            Expanded(child: _screens[_selectedIndex]),
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          children: <Widget>[
+            _buildHomeContent(),
+            const StatisticsScreen(),
+            const SettingsScreen(),
           ],
         ),
       ),
       // 只在首页显示"记一笔"按钮，且修复跳转逻辑
-      floatingActionButton:
-          _selectedIndex == 0
-              ? Stack(
-                children: [
-                  Positioned(
-                    right: 4,
-                    bottom: 80, // 保持上移，避免遮挡底部导航栏
-                    child: Material(
-                      color: Colors.transparent,
-                      elevation: 12,
-                      borderRadius: BorderRadius.circular(24),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(24),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => const AddTransactionScreen(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFFEEF0FF), Color(0xFFD6D8F6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(
-                                  (0.1 * 255).round(),
-                                ),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.add,
-                                color: Color(0xFF5B5BFF),
-                                size: 24,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                '记一笔',
-                                style: TextStyle(
-                                  color: Color(0xFF5B5BFF),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+      floatingActionButton: Consumer<TransactionProvider>(
+        builder: (context, provider, child) {
+          if (_selectedIndex == 0 && !provider.isLoading) {
+            return AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _isFabExtended ? 1.0 : 0.7,
+              child: FloatingActionButton.extended(
+                onPressed: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddTransactionScreen(),
                     ),
-                  ),
-                ],
-              )
-              : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+                  );
+
+                  if (result == true) {
+                    // 数据已由 provider 更新，此处无需手动加载
+                  }
+                },
+                isExtended: _isFabExtended,
+                icon: const Icon(Icons.add),
+                label: const Text('记一笔'),
+              ),
+            );
+          } else {
+            return const SizedBox.shrink();
+          }
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.ease,
+          );
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
@@ -220,96 +161,263 @@ class _HomeScreenState extends State<HomeScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return Column(
-          children: [
-            // 摘要卡片
-            SummaryCard(
-              income: provider.totalIncome,
-              expense: provider.totalExpense,
-              balance: provider.balance,
-              currencySymbol: _currencySymbol, // 传递货币符号
-            ),
-
-            // 最近交易标题
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '最近交易',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AllTransactionsScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text('查看全部'),
-                  ),
-                ],
-              ),
-            ),
-
-            // 交易列表
-            Expanded(
-              child:
-                  provider.transactions.isEmpty
-                      ? const Center(child: Text('暂无交易记录，点击下方 + 按钮添加'))
-                      : ListView.builder(
-                        itemCount: provider.transactions.length,
-                        itemBuilder: (context, index) {
-                          final transaction = provider.transactions[index];
-                          return TransactionListItem(
-                            transaction: transaction,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => TransactionDetailScreen(
-                                        transaction: transaction,
-                                      ),
-                                ),
-                              );
-                            },
-                            onDelete: () async {
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder:
-                                    (context) => AlertDialog(
-                                      title: const Text('确认删除'),
-                                      content: const Text('确定要删除这条交易记录吗？'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed:
-                                              () =>
-                                                  Navigator.pop(context, false),
-                                          child: const Text('取消'),
-                                        ),
-                                        TextButton(
-                                          onPressed:
-                                              () =>
-                                                  Navigator.pop(context, true),
-                                          child: const Text('删除'),
-                                        ),
-                                      ],
-                                    ),
-                              );
-                              if (confirmed == true) {
-                                await Provider.of<TransactionProvider>(
-                                  context,
-                                  listen: false,
-                                ).deleteTransaction(transaction.id);
-                              }
-                            },
-                          );
-                        },
+        return RefreshIndicator(
+          onRefresh:
+              () =>
+                  Provider.of<TransactionProvider>(
+                    context,
+                    listen: false,
+                  ).loadTransactions(),
+          child: ListView(
+            controller: _scrollController,
+            children: [
+              // Search bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SearchScreen(),
                       ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).brightness == Brightness.light
+                              ? Colors.grey[200]
+                              : Colors.grey[800],
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search, color: Colors.grey[600]),
+                        const SizedBox(width: 8),
+                        Text('搜索交易', style: TextStyle(color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // 摘要卡片
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
+                child: SummaryCard(
+                  income: provider.totalIncome,
+                  expense: provider.totalExpense,
+                  balance: provider.balance,
+                  currencySymbol: '',
+                ),
+              ),
+
+              // 最近交易标题
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '最近交易',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllTransactionsScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text('查看全部'),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 分组交易列表
+              if (provider.transactions.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text('暂无交易记录，点击下方 + 按钮添加'),
+                  ),
+                )
+              else
+                ..._buildGroupedTransactions(
+                  context,
+                  provider.convertedTransactions,
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildGroupedTransactions(
+    BuildContext context,
+    List<Transaction> transactions,
+  ) {
+    final grouped = <DateTime, List<Transaction>>{};
+
+    // Sort transactions by date descending
+    final sortedTransactions = List<Transaction>.from(transactions)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    for (var transaction in sortedTransactions) {
+      final dateKey = DateTime(
+        transaction.date.year,
+        transaction.date.month,
+        transaction.date.day,
+      );
+      if (grouped[dateKey] == null) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey]!.add(transaction);
+    }
+
+    final List<Widget> widgets = [];
+    grouped.forEach((date, dailyTransactions) {
+      widgets.add(_buildDateHeader(date, dailyTransactions));
+      widgets.addAll(
+        dailyTransactions.map((transaction) {
+          return TransactionListItem(
+            transaction: transaction,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) =>
+                          TransactionDetailScreen(transaction: transaction),
+                ),
+              );
+            },
+            onDelete: () => _confirmDeleteTransaction(context, transaction.id),
+          );
+        }).toList(),
+      );
+    });
+
+    return widgets;
+  }
+
+  Widget _buildDateHeader(DateTime date, List<Transaction> transactions) {
+    final dailyExpense = transactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
+    final dailyIncome = transactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    String summary = '';
+    if (dailyExpense > 0) {
+      summary += '支 ${FormatUtil.formatNumberSmart(dailyExpense)}';
+    }
+    if (dailyIncome > 0) {
+      summary += ' 收 ${FormatUtil.formatNumberSmart(dailyIncome)}';
+    }
+
+    final headerTextStyle = TextStyle(color: Colors.grey[600], fontSize: 13);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              _buildRatioBar(dailyIncome, dailyExpense),
+              const SizedBox(width: 8),
+              Text(
+                '${FormatUtil.formatDateForGroupHeader(date)} ${FormatUtil.getWeekdayName(date.weekday)} ${FormatUtil.getRelativeDayString(date)}',
+                style: headerTextStyle,
+              ),
+            ],
+          ),
+          Text(summary.trim(), style: headerTextStyle),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatioBar(double income, double expense) {
+    final total = income + expense;
+    if (total == 0) {
+      return Container(width: 4, height: 16);
+    }
+
+    final incomeRatio = income / total;
+    final expenseRatio = expense / total;
+
+    // 绿色代表支出, 红色代表收入
+    const expenseColor = Colors.green;
+    const incomeColor = Colors.red;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: Container(
+        width: 4,
+        height: 16,
+        child: Column(
+          children: [
+            if (expense > 0)
+              Flexible(
+                flex: (expenseRatio * 100).toInt(),
+                child: Container(color: expenseColor),
+              ),
+            if (income > 0)
+              Flexible(
+                flex: (incomeRatio * 100).toInt(),
+                child: Container(color: incomeColor),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 新增：确认删除交易的对话框
+  Future<void> _confirmDeleteTransaction(
+    BuildContext context,
+    String id,
+  ) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('确认删除'),
+          content: const Text('您确定要删除此交易记录吗？此操作无法撤销。'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('取消'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // 关闭对话框
+              },
+            ),
+            TextButton(
+              child: const Text('删除'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(); // 关闭对话框
+                // 调用 provider 中的方法删除交易
+                await Provider.of<TransactionProvider>(
+                  context,
+                  listen: false,
+                ).deleteTransaction(id);
+              },
             ),
           ],
         );

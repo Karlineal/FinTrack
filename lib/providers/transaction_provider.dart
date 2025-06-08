@@ -25,6 +25,9 @@ class TransactionProvider with ChangeNotifier {
           .where((transaction) => transaction.type == TransactionType.expense)
           .toList();
 
+  // 获取转换后的交易记录（用于UI显示，已统一为基准货币）
+  List<Transaction> get convertedTransactions => _convertedTransactions;
+
   // 获取总收入（转换为基准货币）
   double get totalIncome => _convertedIncomeTransactions.fold(
     0,
@@ -83,7 +86,10 @@ class TransactionProvider with ChangeNotifier {
   Future<void> addTransaction(Transaction transaction) async {
     try {
       await _databaseService.insertTransaction(transaction);
-      await loadTransactions(); // 重新加载所有交易记录
+      _transactions.insert(0, transaction); // 插入到列表开头
+      _transactions.sort((a, b) => b.date.compareTo(a.date));
+      await _convertTransactionsToBased(); // 重新计算转换后的列表
+      notifyListeners(); // 通知UI更新
 
       // 发送通知
       final notificationManager = NotificationManager();
@@ -134,7 +140,15 @@ class TransactionProvider with ChangeNotifier {
   Future<void> updateTransaction(Transaction transaction) async {
     try {
       await _databaseService.updateTransaction(transaction);
-      await loadTransactions(); // 重新加载所有交易记录
+      final index = _transactions.indexWhere((t) => t.id == transaction.id);
+      if (index != -1) {
+        _transactions[index] = transaction;
+        _transactions.sort((a, b) => b.date.compareTo(a.date));
+        await _convertTransactionsToBased(); // 重新计算
+        notifyListeners(); // 通知UI更新
+      } else {
+        await loadTransactions(); // 如果找不到，则重新加载
+      }
     } catch (e) {
       // print('更新交易记录时出错: $e');
       rethrow;
@@ -145,7 +159,9 @@ class TransactionProvider with ChangeNotifier {
   Future<void> deleteTransaction(String id) async {
     try {
       await _databaseService.deleteTransaction(id);
-      await loadTransactions(); // 重新加载所有交易记录
+      _transactions.removeWhere((t) => t.id == id);
+      await _convertTransactionsToBased(); // 重新计算
+      notifyListeners(); // 通知UI更新
     } catch (e) {
       // print('删除交易记录时出错: $e');
       rethrow;
@@ -239,38 +255,32 @@ class TransactionProvider with ChangeNotifier {
   // 转换所有交易记录到基准货币
   Future<void> _convertTransactionsToBased() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      // 直接从 SharedPreferences 获取基准货币代码
-      final baseCurrency = prefs.getString('defaultInputCurrency') ?? 'CNY';
+      const baseCurrency = 'CNY'; // 直接将基准货币设为CNY
 
       _convertedTransactions = [];
 
       for (final transaction in _transactions) {
-        final transactionCurrency =
-            transaction.currency; // transaction.currency 已经是货币代码
+        final transactionCurrency = transaction.currency;
 
         if (transactionCurrency == baseCurrency) {
-          // 相同货币，直接添加
           _convertedTransactions.add(transaction);
         } else {
-          // 不同货币，需要转换
           final convertedAmount = await ExchangeRateService.convertAmount(
             transaction.amount,
             transactionCurrency,
             baseCurrency,
           );
-
-          // 创建转换后的交易记录副本，currency 字段保持为基准货币代码
-          final convertedTransaction = transaction.copyWith(
-            amount: convertedAmount,
-            currency: baseCurrency, // 存储基准货币代码
+          _convertedTransactions.add(
+            transaction.copyWith(
+              amount: convertedAmount,
+              currency: baseCurrency,
+            ),
           );
-
-          _convertedTransactions.add(convertedTransaction);
         }
       }
     } catch (e) {
-      // 转换失败时，使用原始交易记录
+      // print('转换交易记录到基准货币时出错: $e');
+      // 如果转换失败，使用原始数据，避免整个应用崩溃
       _convertedTransactions = List.from(_transactions);
     }
   }

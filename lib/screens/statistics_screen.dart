@@ -542,26 +542,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
       if (_periodIndex == 3 && daysInRange > 35) {
         // 大于35天的自定义范围，按月聚合
-        final Map<String, double> monthlyData = {};
-        DateTime tempDate = DateTime(_startDate.year, _startDate.month, 1);
-        while (tempDate.isBefore(_endDate.add(const Duration(days: 1)))) {
-          final key = DateFormat('yy/MM').format(tempDate);
-          monthlyData[key] = 0.0;
-          tempDate = DateTime(tempDate.year, tempDate.month + 1, 1);
-        }
-
-        final relevantTransactions = transactions.where(
-          (t) => (t.type == TransactionType.expense) == _trendIsExpense,
+        trendData = List.filled(12, 0.0);
+        xLabels = List.generate(12, (index) => '${index + 1}月');
+        final monthlyData = _groupTransactionsByMonth(
+          transactions,
+          _trendIsExpense,
         );
-
-        for (final transaction in relevantTransactions) {
-          final key = DateFormat('yy/MM').format(transaction.date);
-          if (monthlyData.containsKey(key)) {
-            monthlyData.update(key, (value) => value + transaction.amount);
+        monthlyData.forEach((month, amount) {
+          if (month >= 1 && month <= 12) {
+            trendData[month - 1] = amount;
           }
-        }
-        trendData = monthlyData.values.toList();
-        xLabels = monthlyData.keys.toList();
+        });
       } else {
         // 月视图和短期自定义范围，按天聚合
         if (daysInRange <= 0) {
@@ -584,10 +575,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           if (_periodIndex == 0) {
             // 月视图标签
             final daysInMonth = _endDate.day;
-            final labelDays = <int>{1, daysInMonth};
-            for (int i = 5; i < daysInMonth; i += 5) {
-              labelDays.add(i);
-            }
+            final Set<int> labelDays = {1, 5, 10, 15, 20, 25, daysInMonth};
+
             xLabels = List.generate(daysInMonth, (i) {
               final day = i + 1;
               if (labelDays.contains(day)) {

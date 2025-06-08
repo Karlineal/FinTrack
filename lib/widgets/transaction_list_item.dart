@@ -7,12 +7,14 @@ class TransactionListItem extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final bool showDate;
 
   const TransactionListItem({
     super.key,
     required this.transaction,
     this.onTap,
     this.onDelete,
+    this.showDate = false,
   });
 
   @override
@@ -64,7 +66,9 @@ class TransactionListItem extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          FormatUtil.formatTime(transaction.date),
+                          showDate
+                              ? FormatUtil.formatDateTime(transaction.date)
+                              : FormatUtil.formatTime(transaction.date),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: Colors.grey[600]),
                         ),

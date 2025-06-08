@@ -35,6 +35,16 @@ enum Category {
   otherExpense,
 }
 
+extension CategoryProperties on Category {
+  bool get isIncome {
+    return [Category.salary, Category.gift, Category.other].contains(this);
+  }
+
+  bool get isExpense {
+    return !isIncome;
+  }
+}
+
 class Transaction {
   final String id;
   final String title;
