@@ -167,38 +167,23 @@ class _TransactionFormState extends State<TransactionForm> {
     }
   }
 
-  Future<void> _showNoteDialog() async {
-    final note = await showDialog<String>(
+  void _showNoteEntryModal() {
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        final controller = TextEditingController(text: _noteController.text);
-        return AlertDialog(
-          title: const Text('添加备注'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: '写点什么...'),
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(controller.text);
-              },
-              child: const Text('确定'),
-            ),
-          ],
+          child: _NoteInputSheet(noteController: _noteController),
         );
       },
-    );
-    if (note != null) {
-      setState(() {
-        _noteController.text = note;
-      });
-    }
+    ).then((_) {
+      // Refresh the state to show the updated note label on the button
+      setState(() {});
+    });
   }
 
   @override
@@ -221,9 +206,10 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   Widget _buildTypeSelector() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: colorScheme.surfaceVariant.withOpacity(0.5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: ToggleButtons(
@@ -238,20 +224,22 @@ class _TransactionFormState extends State<TransactionForm> {
                   index == 0 ? TransactionType.expense : TransactionType.income;
               if (_type == TransactionType.expense &&
                   !Category.values
-                      .where((c) => c != Category.salary)
-                      .contains(_category))
+                      .where((c) => c.isExpense)
+                      .contains(_category)) {
                 _category = Category.food;
-              else if (_type == TransactionType.income &&
-                  ![
-                    Category.salary,
-                    Category.gift,
-                    Category.other,
-                  ].contains(_category))
+              } else if (_type == TransactionType.income &&
+                  !Category.values
+                      .where((c) => c.isIncome)
+                      .contains(_category)) {
                 _category = Category.salary;
+              }
             }),
-        selectedColor: Colors.white,
-        fillColor: _type == TransactionType.expense ? Colors.red : Colors.green,
-        color: Colors.black,
+        selectedColor: colorScheme.onPrimary,
+        fillColor:
+            _type == TransactionType.expense
+                ? colorScheme.error
+                : colorScheme.primary,
+        color: colorScheme.onSurface,
         constraints: const BoxConstraints(minWidth: 80, minHeight: 36),
         children: const [Text('支出'), Text('收入')],
       ),
@@ -259,12 +247,14 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   Widget _buildCategoryGrid() {
+    final colorScheme = Theme.of(context).colorScheme;
     final isExpense = _type == TransactionType.expense;
     final categories =
         isExpense
             ? Category.values.where((c) => c.isExpense).toList()
             : Category.values.where((c) => c.isIncome).toList();
-    final Color selectedColor = isExpense ? Colors.red : Colors.green;
+    final Color selectedColor =
+        isExpense ? colorScheme.error : colorScheme.primary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -291,19 +281,23 @@ class _TransactionFormState extends State<TransactionForm> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: selected ? selectedColor : Colors.grey[200],
+                    color:
+                        selected ? selectedColor : colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Icon(
                     FormatUtil.getCategoryIcon(category),
                     size: 22,
-                    color: selected ? Colors.white : Colors.black87,
+                    color:
+                        selected
+                            ? colorScheme.onPrimary
+                            : colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   FormatUtil.getCategoryName(category),
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: 11, color: colorScheme.onSurface),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -317,6 +311,9 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   Widget _buildDisplayAndActions() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
@@ -326,13 +323,19 @@ class _TransactionFormState extends State<TransactionForm> {
             children: [
               Text(
                 _currency == 'CNY' ? '¥' : '\$',
-                style: TextStyle(fontSize: 28, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 28,
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _amountString,
-                  style: const TextStyle(fontSize: 40),
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontSize: 40,
+                    color: colorScheme.onSurface,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.start,
@@ -349,12 +352,7 @@ class _TransactionFormState extends State<TransactionForm> {
                 onTap: _selectDate,
               ),
               const SizedBox(width: 12),
-              _buildActionButton(
-                icon: Icons.notes_rounded,
-                label:
-                    _noteController.text.isEmpty ? '备注' : _noteController.text,
-                onTap: _showNoteDialog,
-              ),
+              Flexible(child: _buildNoteButton()),
               const SizedBox(width: 12),
               _buildActionButton(
                 icon: Icons.monetization_on_outlined,
@@ -368,25 +366,67 @@ class _TransactionFormState extends State<TransactionForm> {
     );
   }
 
+  Widget _buildNoteButton() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final noteText = _noteController.text;
+    final noteLabel = noteText.isEmpty ? '备注' : noteText;
+
+    return InkWell(
+      onTap: _showNoteEntryModal,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.notes_rounded,
+              size: 16,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                noteLabel,
+                style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButton({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: Colors.grey[700]),
+            Icon(icon, size: 16, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontSize: 14)),
+            Text(
+              label,
+              style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
+            ),
           ],
         ),
       ),
@@ -394,6 +434,8 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   Widget _buildCalculatorKeyboard() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final keys = [
       '1',
       '2',
@@ -402,7 +444,7 @@ class _TransactionFormState extends State<TransactionForm> {
       '4',
       '5',
       '6',
-      '再记一笔',
+      '再记',
       '7',
       '8',
       '9',
@@ -414,8 +456,9 @@ class _TransactionFormState extends State<TransactionForm> {
     ];
 
     return Container(
+      key: const ValueKey('calculator-keyboard'),
       padding: const EdgeInsets.all(8.0),
-      color: Colors.grey[100],
+      color: colorScheme.surface,
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -434,37 +477,40 @@ class _TransactionFormState extends State<TransactionForm> {
             return _buildKey(
               key,
               onTap: () => _submit(false),
-              backgroundColor: Colors.green,
-              textColor: Colors.white,
+              backgroundColor: colorScheme.primary,
+              textColor: colorScheme.onPrimary,
             );
           }
-          if (key == '再记一笔') {
+          if (key == '再记') {
             return _buildKey(
               key,
               onTap: () => _submit(true),
-              backgroundColor: Colors.white,
+              backgroundColor: colorScheme.surface,
+              textColor: colorScheme.onSurface,
             );
           }
           if (key == 'BACKSPACE') {
             return _buildKey(
               key,
               onTap: () => _handleKeyPress('BACKSPACE'),
-              backgroundColor: Colors.white,
+              backgroundColor: colorScheme.surface,
+              textColor: colorScheme.onSurface,
             );
           }
           if (key == '+' || key == '-') {
             // Disabled for now
             return _buildKey(
               key,
-              backgroundColor: Colors.white,
-              textColor: Colors.grey[400],
+              backgroundColor: colorScheme.surface,
+              textColor: colorScheme.onSurface.withOpacity(0.5),
             );
           }
 
           return _buildKey(
             key,
             onTap: () => _handleKeyPress(key),
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
+            textColor: colorScheme.onSurface,
           );
         },
       ),
@@ -477,16 +523,17 @@ class _TransactionFormState extends State<TransactionForm> {
     Color? backgroundColor,
     Color? textColor,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: backgroundColor ?? Colors.grey[200],
+          color: backgroundColor ?? colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: colorScheme.shadow.withOpacity(0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -499,12 +546,83 @@ class _TransactionFormState extends State<TransactionForm> {
                   : Text(
                     key,
                     style: TextStyle(
-                      fontSize: key == '再记一笔' || key == '确定' ? 16 : 22,
+                      fontSize: key == '再记' || key == '确定' ? 16 : 22,
                       fontWeight: FontWeight.bold,
                       color: textColor,
                     ),
                   ),
         ),
+      ),
+    );
+  }
+}
+
+class _NoteInputSheet extends StatefulWidget {
+  final TextEditingController noteController;
+
+  const _NoteInputSheet({required this.noteController});
+
+  @override
+  State<_NoteInputSheet> createState() => _NoteInputSheetState();
+}
+
+class _NoteInputSheetState extends State<_NoteInputSheet> {
+  bool _keyboardVisibleOnce = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    if (bottomInset > 0) {
+      _keyboardVisibleOnce = true;
+    }
+    if (_keyboardVisibleOnce && bottomInset == 0 && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      });
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 20, 12, 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: widget.noteController,
+              autofocus: true,
+              textAlignVertical: TextAlignVertical.center,
+              decoration: InputDecoration(
+                hintText: '点击输入备注',
+                filled: true,
+                fillColor: colorScheme.surfaceVariant.withOpacity(0.6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.keyboard_arrow_down),
+            iconSize: 28,
+            onPressed: () => Navigator.of(context).pop(),
+            color: colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ],
       ),
     );
   }

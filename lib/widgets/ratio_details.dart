@@ -3,43 +3,49 @@ import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
 
-// 为不同类别定义一组固定的颜色以获得更好的视觉效果
-Map<Category, Color> _getCategoryColors() {
-  return {
-    Category.food: Colors.orange.shade400,
-    Category.takeout: Colors.orange.shade600,
-    Category.snacks: Colors.amber.shade400,
-    Category.drinks: Colors.amber.shade600,
-    Category.shopping: Colors.pink.shade300,
-    Category.clothes: Colors.pink.shade400,
-    Category.digital: Colors.red.shade400,
-    Category.transportation: Colors.blue.shade400,
-    Category.entertainment: Colors.purple.shade300,
-    Category.utilities: Colors.lightGreen.shade400,
-    Category.rent: Colors.green.shade600,
-    Category.internet: Colors.teal.shade300,
-    Category.phone: Colors.cyan.shade400,
-    Category.health: Colors.red.shade300,
-    Category.education: Colors.indigo.shade300,
-    Category.study: Colors.indigo.shade400,
-    Category.sports: Colors.lightBlue.shade300,
-    Category.travel: Colors.teal.shade400,
-    Category.pets: Colors.brown.shade400,
-    Category.beauty: Colors.pink.shade200,
-    Category.smoke: Colors.grey.shade500,
-    Category.daily: Colors.lime.shade600,
-    Category.fastmail: Colors.deepOrange.shade300,
-    Category.otherExpense: Colors.grey.shade400,
-    Category.salary: Colors.green.shade500,
-    Category.gift: Colors.red.shade500,
-    Category.other: Colors.blueGrey.shade400,
-    Category.campus: Colors.lightGreen.shade600,
-    Category.water: Colors.blue.shade200,
-  };
+List<Color> _generateColors(BuildContext context) {
+  final brightness = Theme.of(context).brightness;
+  if (brightness == Brightness.dark) {
+    // Dark mode color palette - vibrant but not overly bright
+    return [
+      Colors.teal.shade300,
+      Colors.lightBlue.shade300,
+      Colors.purple.shade300,
+      Colors.pink.shade300,
+      Colors.orange.shade400,
+      Colors.green.shade400,
+      Colors.amber.shade400,
+      Colors.cyan.shade300,
+      Colors.indigo.shade300,
+      Colors.red.shade300,
+    ];
+  } else {
+    // Light mode color palette - soft and pleasant
+    return [
+      Colors.blue.shade400,
+      Colors.green.shade500,
+      Colors.orange.shade500,
+      Colors.purple.shade400,
+      Colors.red.shade400,
+      Colors.teal.shade400,
+      Colors.pink.shade400,
+      Colors.amber.shade600,
+      Colors.cyan.shade500,
+      Colors.indigo.shade400,
+    ];
+  }
 }
 
-Color _getColorForCategory(Category category) {
-  return _getCategoryColors()[category] ?? Colors.grey;
+Map<Category, Color> _getCategoryColors(
+  BuildContext context,
+  List<Category> categories,
+) {
+  final colors = _generateColors(context);
+  final colorMap = <Category, Color>{};
+  for (int i = 0; i < categories.length; i++) {
+    colorMap[categories[i]] = colors[i % colors.length];
+  }
+  return colorMap;
 }
 
 class RatioDetails extends StatefulWidget {
@@ -72,7 +78,12 @@ class _RatioDetailsState extends State<RatioDetails> {
       return Container(
         height: 200,
         alignment: Alignment.center,
-        child: const Text('当前范围无相关数据'),
+        child: Text(
+          '当前范围无相关数据',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       );
     }
 
@@ -90,6 +101,15 @@ class _RatioDetailsState extends State<RatioDetails> {
     final sortedCategories =
         categoryData.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
+
+    final categoryColorMap = _getCategoryColors(
+      context,
+      sortedCategories.map((e) => e.key).toList(),
+    );
+
+    Color getColorForCategory(Category category) {
+      return categoryColorMap[category] ?? Colors.grey;
+    }
 
     return Column(
       children: [
@@ -127,7 +147,7 @@ class _RatioDetailsState extends State<RatioDetails> {
                       final entry = sortedCategories[i];
 
                       return PieChartSectionData(
-                        color: _getColorForCategory(entry.key),
+                        color: getColorForCategory(entry.key),
                         value: entry.value,
                         title: '',
                         radius: radius,
@@ -144,13 +164,13 @@ class _RatioDetailsState extends State<RatioDetails> {
                     itemCount: sortedCategories.length,
                     itemBuilder: (context, index) {
                       final entry = sortedCategories[index];
-                      final percentage = (entry.value / total) * 100;
-                      final isTouched = index == touchedIndex;
+                      final percentage =
+                          total > 0 ? (entry.value / total) * 100 : 0.0;
                       return _buildLegendItem(
-                        entry.key,
-                        percentage,
-                        isTouched,
-                        context,
+                        category: entry.key,
+                        percentage: percentage,
+                        isTouched: index == touchedIndex,
+                        color: getColorForCategory(entry.key),
                       );
                     },
                   ),
@@ -166,10 +186,13 @@ class _RatioDetailsState extends State<RatioDetails> {
           itemCount: sortedCategories.length,
           itemBuilder: (context, index) {
             final entry = sortedCategories[index];
+            final percentage = total > 0 ? (entry.value / total) * 100 : 0.0;
             return _buildCategoryListItem(
               context: context,
               category: entry.key,
               amount: entry.value,
+              percentage: percentage,
+              color: getColorForCategory(entry.key),
             );
           },
         ),
@@ -177,12 +200,12 @@ class _RatioDetailsState extends State<RatioDetails> {
     );
   }
 
-  Widget _buildLegendItem(
-    Category category,
-    double percentage,
-    bool isTouched,
-    BuildContext context,
-  ) {
+  Widget _buildLegendItem({
+    required Category category,
+    required double percentage,
+    required bool isTouched,
+    required Color color,
+  }) {
     final double size = isTouched ? 14 : 10;
     final double verticalPadding = isTouched ? 3 : 5;
 
@@ -198,7 +221,7 @@ class _RatioDetailsState extends State<RatioDetails> {
               duration: const Duration(milliseconds: 150),
               width: size,
               height: size,
-              color: _getColorForCategory(category),
+              color: color,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -222,32 +245,72 @@ class _RatioDetailsState extends State<RatioDetails> {
     required BuildContext context,
     required Category category,
     required double amount,
+    required double percentage,
+    required Color color,
   }) {
+    final theme = Theme.of(context);
+
     return Card(
-      elevation: 0.5,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getColorForCategory(category).withOpacity(0.15),
-          child: Icon(
-            FormatUtil.getCategoryIcon(category),
-            color: _getColorForCategory(category),
-            size: 20,
-          ),
-        ),
-        title: Text(
-          FormatUtil.getCategoryName(category),
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        trailing: Text(
-          FormatUtil.formatCurrency(amount),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-            color:
-                widget.isExpense ? Colors.red.shade400 : Colors.green.shade600,
-          ),
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      color: color.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    FormatUtil.getCategoryIcon(category),
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        FormatUtil.getCategoryName(category),
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${percentage.toStringAsFixed(2)}%',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  FormatUtil.formatCurrency(amount),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percentage / 100,
+                backgroundColor: color.withOpacity(0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 6,
+              ),
+            ),
+          ],
         ),
       ),
     );

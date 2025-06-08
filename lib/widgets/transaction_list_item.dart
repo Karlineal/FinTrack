@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
 import '../utils/theme_util.dart';
+import 'package:intl/intl.dart';
 
 class TransactionListItem extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
-  final bool showDate;
+  final String? dateFormat;
 
   const TransactionListItem({
     super.key,
     required this.transaction,
     this.onTap,
     this.onDelete,
-    this.showDate = false,
+    this.dateFormat,
   });
 
   @override
@@ -65,13 +66,18 @@ class TransactionListItem extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Text(
-                          showDate
-                              ? FormatUtil.formatDateTime(transaction.date)
-                              : FormatUtil.formatTime(transaction.date),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[600]),
-                        ),
+                        if (dateFormat != null)
+                          Text(
+                            DateFormat(dateFormat).format(transaction.date),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[600]),
+                          )
+                        else
+                          Text(
+                            FormatUtil.formatTime(transaction.date),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[600]),
+                          ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(

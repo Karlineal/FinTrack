@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_provider.dart';
-import '../widgets/expense_chart.dart';
 import '../utils/format_util.dart';
-import '../utils/theme_util.dart';
 import '../widgets/ratio_details.dart';
 import '../widgets/trend_line_chart.dart' as trend;
 
@@ -102,12 +100,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   color: Theme.of(context).scaffoldBackgroundColor,
                   child: TabBar(
                     controller: _tabController,
-                    labelColor: Theme.of(context).primaryColor,
-                    unselectedLabelColor: Colors.black54,
+                    labelColor: Theme.of(context).colorScheme.primary,
+                    unselectedLabelColor:
+                        Theme.of(context).colorScheme.onSurfaceVariant,
                     indicator: UnderlineTabIndicator(
                       borderSide: BorderSide(
                         width: 3,
-                        color: Theme.of(context).primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       insets: const EdgeInsets.symmetric(horizontal: 24),
                     ),
@@ -157,9 +156,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                 Flexible(
                                   child: Text(
                                     _getPeriodLabel(),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
@@ -167,12 +170,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                   ),
                                 ),
                                 if (_periodIndex == 3)
-                                  const Padding(
-                                    padding: EdgeInsets.only(left: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4),
                                     child: Icon(
                                       Icons.edit,
                                       size: 16,
-                                      color: Colors.grey,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 if (_isCurrentPeriod())
@@ -183,7 +189,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceContainerHighest,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
@@ -194,9 +203,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                                           : _periodIndex == 2
                                           ? '今年'
                                           : '',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.black54,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ),
@@ -222,10 +234,19 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             ),
             Consumer<TransactionProvider>(
               builder: (context, provider, child) {
-                final transactions = provider.getTransactionsInDateRange(
-                  _startDate,
-                  _endDate,
+                // Correctly filter converted transactions by the precise date range
+                final nextDayOfEndDate = DateTime(
+                  _endDate.year,
+                  _endDate.month,
+                  _endDate.day + 1,
                 );
+                final transactions =
+                    provider.convertedTransactions.where((t) {
+                      return (t.date.isAtSameMomentAs(_startDate) ||
+                              t.date.isAfter(_startDate)) &&
+                          t.date.isBefore(nextDayOfEndDate);
+                    }).toList();
+
                 if (transactions.isEmpty) {
                   return SliverToBoxAdapter(
                     child: SizedBox(
@@ -237,14 +258,19 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                             Icon(
                               Icons.insert_drive_file_rounded,
                               size: 90,
-                              color: Color(0xFFFBC02D),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withAlpha(180),
                             ),
                             const SizedBox(height: 18),
-                            const Text(
+                            Text(
                               '您添加的账单统计分析将会显示在此处',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Color(0xFFB0B0C0),
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -282,12 +308,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final sum = totalIncome.abs() + totalExpense.abs();
     final expenseRatio = sum == 0 ? 0.0 : totalExpense.abs() / sum;
     final incomeRatio = sum == 0 ? 0.0 : totalIncome.abs() / sum;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Card(
-        elevation: 1,
+        elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        color: colorScheme.surfaceContainerHighest.withAlpha(70),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
@@ -298,25 +327,28 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFBC02D),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     '结余',
-                    style: TextStyle(fontSize: 13, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       FormatUtil.formatCurrency(balance),
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -328,15 +360,18 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF43A047),
+                    decoration: BoxDecoration(
+                      color: colorScheme.error,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     '支出',
-                    style: TextStyle(fontSize: 12, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -345,7 +380,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         Container(
                           height: 6,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
@@ -354,7 +389,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           child: Container(
                             height: 6,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF43A047),
+                              color: colorScheme.error,
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
@@ -365,9 +400,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   const SizedBox(width: 8),
                   Text(
                     FormatUtil.formatCurrency(totalExpense),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF43A047),
+                      color: colorScheme.error,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -379,15 +414,18 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD32F2F),
+                    decoration: BoxDecoration(
+                      color: Colors.green, // Keep income color distinct
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     '收入',
-                    style: TextStyle(fontSize: 12, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -396,7 +434,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         Container(
                           height: 6,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
@@ -405,7 +443,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           child: Container(
                             height: 6,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD32F2F),
+                              color: Colors.green,
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
@@ -418,7 +456,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     FormatUtil.formatCurrency(totalIncome),
                     style: const TextStyle(
                       fontSize: 12,
-                      color: Color(0xFFD32F2F),
+                      color: Colors.green,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -432,11 +470,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildRatioSection(List<Transaction> transactions) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F7FA),
+          color: colorScheme.surfaceContainerHighest.withAlpha(70),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -446,12 +486,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               padding: const EdgeInsets.only(left: 16, right: 14, top: 8),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     '占比',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.normal,
-                      color: Color(0xFF23232B),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   const Spacer(),
@@ -473,6 +513,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   Widget _buildRatioToggleButton(bool isExpense) {
     final bool selected = (isExpense == _ratioIsExpense);
+    final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap:
           selected
@@ -487,17 +528,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         height: 28,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF545F92) : Colors.transparent,
+          color: selected ? colorScheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border:
               selected
                   ? null
-                  : Border.all(color: const Color(0xFF545F92), width: 1),
+                  : Border.all(color: colorScheme.primary, width: 1),
         ),
         child: Text(
           isExpense ? '支出' : '收入',
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF545F92),
+            color: selected ? colorScheme.onPrimary : colorScheme.primary,
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -624,7 +665,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       final formatter = DateFormat('yyyy/MM/dd');
       return '${formatter.format(_startDate)}-${formatter.format(_endDate)}';
     } else if (_periodIndex == 2) {
-      return '${_endDate.year}年';
+      return '${_startDate.year}年';
     } else {
       final formatter = DateFormat('yyyy-MM-dd');
       return '${formatter.format(_startDate)} ~ ${formatter.format(_endDate)}';
@@ -660,8 +701,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         _endDate = weekRange.end;
       } else if (_periodIndex == 2) {
         // 年
-        _startDate = DateTime(_startDate.year + direction, 1, 1);
-        _endDate = DateTime(_startDate.year + direction, 12, 31);
+        final newYear = _startDate.year + direction;
+        _startDate = DateTime(newYear, 1, 1);
+        _endDate = DateTime(newYear, 12, 31);
       }
     });
   }
@@ -673,16 +715,25 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       lastDate: DateTime(2101),
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
       builder: (context, child) {
+        final theme = Theme.of(context);
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
+          data: theme.copyWith(
+            colorScheme:
+                theme.brightness == Brightness.dark
+                    ? ColorScheme.dark(
+                      primary: theme.colorScheme.primary,
+                      onPrimary: theme.colorScheme.onPrimary,
+                      surface: theme.scaffoldBackgroundColor,
+                      onSurface: theme.colorScheme.onSurface,
+                    )
+                    : ColorScheme.light(
+                      primary: theme.colorScheme.primary,
+                      onPrimary: Colors.white,
+                      onSurface: Colors.black,
+                    ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).primaryColor,
+                foregroundColor: theme.colorScheme.primary,
               ),
             ),
           ),
@@ -699,10 +750,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   DateTimeRange _getWeekDateRange(DateTime date) {
-    // weekday is 1 for Monday and 7 for Sunday.
     final startOfWeek = date.subtract(Duration(days: date.weekday - 1));
     final endOfWeek = startOfWeek.add(const Duration(days: 6));
-    return DateTimeRange(start: startOfWeek, end: endOfWeek);
+    return DateTimeRange(
+      start: DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day),
+      end: DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59),
+    );
   }
 
   Map<int, double> _groupTransactionsByMonth(
@@ -736,20 +789,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           (value) => value + t.amount,
           ifAbsent: () => t.amount,
         );
-      }
-    }
-    return data;
-  }
-
-  Map<int, double> _groupTransactionsByDayOfMonth(
-    List<Transaction> transactions,
-    bool isExpense,
-  ) {
-    final data = <int, double>{};
-    for (final t in transactions) {
-      if ((t.type == TransactionType.expense) == isExpense) {
-        final day = t.date.day;
-        data.update(day, (value) => value + t.amount, ifAbsent: () => t.amount);
       }
     }
     return data;

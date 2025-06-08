@@ -6,6 +6,7 @@ class SummaryCard extends StatelessWidget {
   final double expense;
   final double balance;
   final String currencySymbol;
+  final String periodLabel;
 
   const SummaryCard({
     super.key,
@@ -13,6 +14,7 @@ class SummaryCard extends StatelessWidget {
     required this.expense,
     required this.balance,
     required this.currencySymbol,
+    this.periodLabel = '本月',
   });
 
   @override
@@ -46,7 +48,7 @@ class SummaryCard extends StatelessWidget {
                 style: theme.textTheme.titleMedium?.copyWith(color: textColor),
               ),
               Text(
-                '本月',
+                periodLabel,
                 style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
               ),
             ],

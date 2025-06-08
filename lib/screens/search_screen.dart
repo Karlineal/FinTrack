@@ -22,7 +22,10 @@ class _SearchScreenState extends State<SearchScreen> {
   final _maxAmountDialogController = TextEditingController();
 
   String _searchTerm = '';
-  Set<TransactionType> _selectedTypes = {};
+  final List<TransactionType> _selectedTypes = [
+    TransactionType.expense,
+    TransactionType.income,
+  ];
   double? _minAmount;
   double? _maxAmount;
 
@@ -140,7 +143,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         final transaction = filteredTransactions[index];
                         return TransactionListItem(
                           transaction: transaction,
-                          showDate: true,
+                          dateFormat: 'yyyy-MM-dd',
                           onTap: () {
                             // Hide keyboard when navigating away
                             FocusScope.of(context).unfocus();
@@ -202,9 +205,11 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       backgroundColor:
           isActive
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              ? Theme.of(context).primaryColor.withAlpha((0.1 * 255).round())
               : Colors.transparent,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.1),
+      selectedColor: Theme.of(
+        context,
+      ).primaryColor.withAlpha((0.1 * 255).round()),
       showCheckmark: false,
     );
   }
@@ -237,9 +242,11 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       backgroundColor:
           isActive
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              ? Theme.of(context).primaryColor.withAlpha((0.1 * 255).round())
               : Colors.transparent,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.1),
+      selectedColor: Theme.of(
+        context,
+      ).primaryColor.withAlpha((0.1 * 255).round()),
       showCheckmark: false,
     );
   }
@@ -257,16 +264,20 @@ class _SearchScreenState extends State<SearchScreen> {
         side: BorderSide(
           color:
               isSelected
-                  ? Theme.of(context).primaryColor
+                  ? Theme.of(
+                    context,
+                  ).primaryColor.withAlpha((0.1 * 255).round())
                   : Colors.grey.shade400,
           width: 1,
         ),
       ),
       backgroundColor:
           isSelected
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              ? Theme.of(context).primaryColor.withAlpha((0.1 * 255).round())
               : Colors.transparent,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.1),
+      selectedColor: Theme.of(
+        context,
+      ).primaryColor.withAlpha((0.1 * 255).round()),
       showCheckmark: false,
     );
   }

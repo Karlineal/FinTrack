@@ -17,11 +17,14 @@ class TrendLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F7FA),
+          color: colorScheme.surfaceVariant.withOpacity(0.3),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -31,18 +34,18 @@ class TrendLineChart extends StatelessWidget {
               padding: const EdgeInsets.only(left: 16, right: 14, top: 8),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     '趋势',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.normal,
-                      color: Color(0xFF23232B),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   const Spacer(),
-                  _buildTrendToggleButton(true),
+                  _buildTrendToggleButton(context, true),
                   const SizedBox(width: 10),
-                  _buildTrendToggleButton(false),
+                  _buildTrendToggleButton(context, false),
                 ],
               ),
             ),
@@ -53,7 +56,7 @@ class TrendLineChart extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '暂无数据',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                 ),
               )
@@ -71,14 +74,14 @@ class TrendLineChart extends StatelessWidget {
                         verticalInterval: 1,
                         getDrawingHorizontalLine: (value) {
                           return FlLine(
-                            color: Colors.grey.shade300,
+                            color: colorScheme.onSurface.withOpacity(0.1),
                             strokeWidth: 1,
                             dashArray: [4, 4],
                           );
                         },
                         getDrawingVerticalLine: (value) {
                           return FlLine(
-                            color: Colors.grey.shade200,
+                            color: colorScheme.onSurface.withOpacity(0.1),
                             strokeWidth: 1,
                           );
                         },
@@ -96,22 +99,23 @@ class TrendLineChart extends StatelessWidget {
                             showTitles: true,
                             reservedSize: 30,
                             interval: _getBottomTitleInterval(),
-                            getTitlesWidget: bottomTitleWidgets,
+                            getTitlesWidget:
+                                (value, meta) =>
+                                    bottomTitleWidgets(value, meta, context),
                           ),
                         ),
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            getTitlesWidget: leftTitleWidgets,
+                            getTitlesWidget:
+                                (value, meta) =>
+                                    leftTitleWidgets(value, meta, context),
                             reservedSize: 42,
                             interval: _getHorizontalInterval(),
                           ),
                         ),
                       ),
-                      borderData: FlBorderData(
-                        show: false,
-                        border: Border.all(color: const Color(0xff37434d)),
-                      ),
+                      borderData: FlBorderData(show: false),
                       minX: 0,
                       maxX: (data.length - 1).toDouble(),
                       minY: 0,
@@ -122,7 +126,7 @@ class TrendLineChart extends StatelessWidget {
                             return FlSpot(index.toDouble(), data[index]);
                           }),
                           isCurved: false,
-                          color: const Color(0xFF373A53),
+                          color: colorScheme.primary,
                           barWidth: 2.5,
                           isStrokeCapRound: true,
                           dotData: const FlDotData(show: false),
@@ -130,8 +134,8 @@ class TrendLineChart extends StatelessWidget {
                             show: true,
                             gradient: LinearGradient(
                               colors: [
-                                const Color(0xFF373A53).withOpacity(0.4),
-                                const Color(0xFF373A53).withOpacity(0.0),
+                                colorScheme.primary.withOpacity(0.4),
+                                colorScheme.primary.withOpacity(0.0),
                               ],
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
@@ -149,8 +153,9 @@ class TrendLineChart extends StatelessWidget {
     );
   }
 
-  Widget _buildTrendToggleButton(bool forExpense) {
+  Widget _buildTrendToggleButton(BuildContext context, bool forExpense) {
     final bool selected = (forExpense == isExpense);
+    final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: selected ? null : onToggle,
       child: Container(
@@ -158,17 +163,17 @@ class TrendLineChart extends StatelessWidget {
         height: 28,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF545F92) : Colors.transparent,
+          color: selected ? colorScheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border:
               selected
                   ? null
-                  : Border.all(color: const Color(0xFF545F92), width: 1),
+                  : Border.all(color: colorScheme.primary, width: 1),
         ),
         child: Text(
           forExpense ? '支出' : '收入',
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF545F92),
+            color: selected ? colorScheme.onPrimary : colorScheme.primary,
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -196,9 +201,14 @@ class TrendLineChart extends StatelessWidget {
     return 1;
   }
 
-  Widget bottomTitleWidgets(double value, TitleMeta meta) {
-    const style = TextStyle(
-      color: Color(0xff68737d),
+  Widget bottomTitleWidgets(
+    double value,
+    TitleMeta meta,
+    BuildContext context,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final style = TextStyle(
+      color: colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.normal,
       fontSize: 12,
     );
@@ -207,15 +217,16 @@ class TrendLineChart extends StatelessWidget {
     if (index >= 0 && index < xLabels.length) {
       text = Text(xLabels[index], style: style);
     } else {
-      text = const Text('', style: style);
+      text = Text('', style: style);
     }
 
     return SideTitleWidget(axisSide: meta.axisSide, child: text);
   }
 
-  Widget leftTitleWidgets(double value, TitleMeta meta) {
-    const style = TextStyle(
-      color: Color(0xff67727d),
+  Widget leftTitleWidgets(double value, TitleMeta meta, BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final style = TextStyle(
+      color: colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.normal,
       fontSize: 12,
     );

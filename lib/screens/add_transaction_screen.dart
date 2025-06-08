@@ -15,6 +15,7 @@ class AddTransactionScreen extends StatelessWidget {
     final isEditing = transactionToEdit != null;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(
           isEditing ? '修改账单' : '记一笔',

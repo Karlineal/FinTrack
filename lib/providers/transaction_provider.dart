@@ -43,6 +43,27 @@ class TransactionProvider with ChangeNotifier {
   // 获取余额
   double get balance => totalIncome - totalExpense;
 
+  // 获取本月总收入
+  double get monthlyIncome {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    return _convertedIncomeTransactions
+        .where((t) => !t.date.isBefore(monthStart))
+        .fold(0, (prev, t) => prev + t.amount);
+  }
+
+  // 获取本月总支出
+  double get monthlyExpense {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    return _convertedExpenseTransactions
+        .where((t) => !t.date.isBefore(monthStart))
+        .fold(0, (prev, t) => prev + t.amount);
+  }
+
+  // 获取本月余额
+  double get monthlyBalance => monthlyIncome - monthlyExpense;
+
   // 获取转换后的收入交易记录
   List<Transaction> get _convertedIncomeTransactions =>
       _convertedTransactions
@@ -85,31 +106,40 @@ class TransactionProvider with ChangeNotifier {
   // 添加交易记录
   Future<void> addTransaction(Transaction transaction) async {
     try {
+      // 核心操作：立即更新UI和数据库
       await _databaseService.insertTransaction(transaction);
       _transactions.insert(0, transaction); // 插入到列表开头
       _transactions.sort((a, b) => b.date.compareTo(a.date));
       await _convertTransactionsToBased(); // 重新计算转换后的列表
-      notifyListeners(); // 通知UI更新
+      notifyListeners(); // 立即通知UI更新
 
-      // 发送通知
-      final notificationManager = NotificationManager();
+      // 非核心操作：在后台执行，不阻塞UI
+      _performPostTransactionTasks(transaction);
+    } catch (e) {
+      // print('添加交易记录时出错: $e');
+      rethrow;
+    }
+  }
 
-      // 发送交易成功通知
-      await notificationManager.sendTransactionSuccessNotification(transaction);
+  // 后台执行的额外任务
+  Future<void> _performPostTransactionTasks(Transaction transaction) async {
+    final notificationManager = NotificationManager();
 
-      // 检查大额支出提醒
-      await notificationManager.sendLargeExpenseAlert(transaction);
+    // 1. 发送交易成功通知
+    await notificationManager.sendTransactionSuccessNotification(transaction);
 
-      // 检查预算警告（需要实现预算功能后添加）
-      // 仅对支出类型交易进行预算检查
-      if (transaction.type == TransactionType.expense) {
+    // 2. 检查大额支出提醒
+    await notificationManager.sendLargeExpenseAlert(transaction);
+
+    // 3. 检查预算警告
+    if (transaction.type == TransactionType.expense) {
+      try {
         final prefs = await SharedPreferences.getInstance();
-        final baseCurrency = prefs.getString('defaultInputCurrency') ?? 'CNY';
-        // 获取该类别的预算（单位为基准货币）
         final budgetKey = 'budget_${transaction.category.name}';
         final budgetLimit = prefs.getDouble(budgetKey);
+
         if (budgetLimit != null && budgetLimit > 0) {
-          // 统计本月该类别的总支出（已转换为基准货币）
+          // 统计本月该类别的总支出
           final now = DateTime.now();
           final monthStart = DateTime(now.year, now.month, 1);
           double categoryExpense = 0;
@@ -129,10 +159,9 @@ class TransactionProvider with ChangeNotifier {
             percentage: percentage,
           );
         }
+      } catch (e) {
+        // print('检查预算时出错: $e');
       }
-    } catch (e) {
-      // print('添加交易记录时出错: $e');
-      rethrow;
     }
   }
 

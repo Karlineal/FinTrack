@@ -9,11 +9,11 @@ import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import 'category_selection_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 导入 SharedPreferences
-import '../services/exchange_rate_service.dart'; // 导入 ExchangeRateService
-import 'package:intl/intl.dart';
+// 导入 ExchangeRateService
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
 import 'search_screen.dart';
+// import 'package:grouped_list/grouped_list.dart'; // No longer needed
 
 enum DateFilterOption { none, oneWeek, oneMonth, sixMonths, oneYear, custom }
 
@@ -26,7 +26,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  String _currencySymbol = '¥'; // 默认货币符号
+  // 默认货币符号
   final PageController _pageController = PageController();
   late ScrollController _scrollController;
   bool _isFabExtended = true;
@@ -74,11 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // 异步加载货币偏好
   Future<void> _loadCurrencyPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    final currencyCode = prefs.getString('currency') ?? 'CNY';
     if (mounted) {
-      setState(() {
-        _currencySymbol = ExchangeRateService.getCurrencySymbol(currencyCode);
-      });
+      setState(() {});
       // 加载后更新交易
       await Provider.of<TransactionProvider>(
         context,
@@ -109,27 +106,16 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Consumer<TransactionProvider>(
         builder: (context, provider, child) {
           if (_selectedIndex == 0 && !provider.isLoading) {
-            return AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: _isFabExtended ? 1.0 : 0.7,
-              child: FloatingActionButton.extended(
-                onPressed: () async {
-                  final result = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddTransactionScreen(),
-                    ),
-                  );
-
-                  if (result == true) {
-                    // 数据已由 provider 更新，此处无需手动加载
-                  }
-                },
-                isExtended: _isFabExtended,
-                icon: const Icon(Icons.add),
-                label: const Text('记一笔'),
-              ),
-            );
+            return _isFabExtended
+                ? FloatingActionButton.extended(
+                  onPressed: () => _navigateToAddTransaction(context),
+                  label: const Text('记一笔'),
+                  icon: const Icon(Icons.add),
+                )
+                : FloatingActionButton(
+                  onPressed: () => _navigateToAddTransaction(context),
+                  child: const Icon(Icons.add),
+                );
           } else {
             return const SizedBox.shrink();
           }
@@ -152,6 +138,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _navigateToAddTransaction(BuildContext context) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddTransactionScreen()),
+    );
+
+    if (result == true) {
+      // Data is updated by the provider, no manual reload needed here.
+    }
   }
 
   Widget _buildHomeContent() {
@@ -212,9 +209,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   vertical: 8.0,
                 ),
                 child: SummaryCard(
-                  income: provider.totalIncome,
-                  expense: provider.totalExpense,
-                  balance: provider.balance,
+                  income: provider.monthlyIncome,
+                  expense: provider.monthlyExpense,
+                  balance: provider.monthlyBalance,
                   currencySymbol: '',
                 ),
               ),
@@ -296,6 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
         dailyTransactions.map((transaction) {
           return TransactionListItem(
             transaction: transaction,
+            dateFormat: 'MM-dd',
             onTap: () {
               Navigator.push(
                 context,
@@ -646,17 +644,18 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = Colors.green;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('账单'),
         centerTitle: true,
-        backgroundColor: mainColor,
+        backgroundColor: colorScheme.primary,
         elevation: 0.5,
       ),
       body: Consumer<TransactionProvider>(
         builder: (context, provider, child) {
-          final filtered = _filterTransactions(provider.transactions);
+          final filtered = _filterTransactions(provider.convertedTransactions);
 
           return Column(
             children: [
@@ -669,14 +668,12 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       '日期',
                       onTap: _pickDateRange,
                       selected: _dateRange != null,
-                      mainColor: mainColor,
                     ),
                     const SizedBox(width: 8),
                     _buildFilterButton(
                       '分类',
                       onTap: _pickCategories,
                       selected: _selectedCategories.isNotEmpty,
-                      mainColor: mainColor,
                     ),
                     const SizedBox(width: 8),
                     _buildFilterButton(
@@ -685,7 +682,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       selected:
                           _selectedTypes.length !=
                           TransactionType.values.length,
-                      mainColor: mainColor,
                     ),
                   ],
                 ),
@@ -702,6 +698,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             final t = filtered[idx];
                             return TransactionListItem(
                               transaction: t,
+                              dateFormat: 'MM-dd',
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -762,17 +759,20 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     String label, {
     required VoidCallback onTap,
     bool selected = false,
-    required Color mainColor,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Expanded(
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
           backgroundColor:
               selected
-                  ? mainColor.withAlpha((0.08 * 255).toInt())
-                  : Colors.white,
-          side: BorderSide(color: selected ? mainColor : Colors.grey.shade300),
+                  ? colorScheme.primary.withOpacity(0.12)
+                  : colorScheme.surface,
+          side: BorderSide(
+            color: selected ? colorScheme.primary : theme.dividerColor,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -780,7 +780,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? mainColor : Colors.black87,
+            color: selected ? colorScheme.primary : colorScheme.onSurface,
             fontWeight: selected ? FontWeight.bold : FontWeight.normal,
           ),
         ),

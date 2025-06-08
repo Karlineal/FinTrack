@@ -65,11 +65,12 @@ class ThemeUtil {
         ),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: primaryColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        iconTheme: IconThemeData(color: lightTextPrimaryColor),
         titleTextStyle: TextStyle(
-          color: Colors.white,
+          color: lightTextPrimaryColor,
           fontSize: 20,
           fontWeight: FontWeight.bold,
           fontFamily: 'Montserrat',
@@ -197,12 +198,12 @@ class ThemeUtil {
         ),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor:
-            primaryColor, // Or a darker shade like Colors.grey[900]
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        iconTheme: IconThemeData(color: darkTextPrimaryColor),
         titleTextStyle: TextStyle(
-          color: Colors.white, // Keep white for contrast on primaryColor
+          color: darkTextPrimaryColor,
           fontSize: 20,
           fontWeight: FontWeight.bold,
           fontFamily: 'Montserrat',

@@ -12,31 +12,37 @@ class TransactionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('账单详情'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor:
-            Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildHeaderCard(context),
-            const SizedBox(height: 16),
-            _buildDetailsCard(context),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomButtons(context),
+    return Consumer<TransactionProvider>(
+      builder: (context, provider, child) {
+        // 从provider中查找最新的【转换后】的交易数据
+        final liveTransaction = provider.convertedTransactions.firstWhere(
+          (t) => t.id == transaction.id,
+          orElse: () => transaction, // 如果找不到，返回旧数据
+        );
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('账单详情'),
+            elevation: 0,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildHeaderCard(context, liveTransaction),
+                const SizedBox(height: 16),
+                _buildDetailsCard(context, liveTransaction),
+              ],
+            ),
+          ),
+          bottomNavigationBar: _buildBottomButtons(context, liveTransaction),
+        );
+      },
     );
   }
 
-  Widget _buildHeaderCard(BuildContext context) {
+  Widget _buildHeaderCard(BuildContext context, Transaction transaction) {
     final theme = Theme.of(context);
     final isIncome = transaction.type == TransactionType.income;
     final color = isIncome ? Colors.green : Colors.red;
@@ -67,6 +73,7 @@ class TransactionDetailScreen extends StatelessWidget {
                 FormatUtil.getCategoryName(transaction.category),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -83,7 +90,7 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsCard(BuildContext context) {
+  Widget _buildDetailsCard(BuildContext context, Transaction transaction) {
     final theme = Theme.of(context);
     return Card(
       elevation: 0,
@@ -135,23 +142,27 @@ class TransactionDetailScreen extends StatelessWidget {
     required String value,
   }) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.onSurface;
+    final secondaryColor = theme.colorScheme.onSurfaceVariant;
+
     return Row(
       children: [
-        Icon(icon, size: 22, color: theme.textTheme.bodySmall?.color),
+        Icon(icon, size: 22, color: secondaryColor),
         const SizedBox(width: 16),
-        Text(label, style: theme.textTheme.titleMedium),
+        Text(
+          label,
+          style: theme.textTheme.titleMedium?.copyWith(color: primaryColor),
+        ),
         const Spacer(),
         Text(
           value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.textTheme.bodySmall?.color,
-          ),
+          style: theme.textTheme.titleMedium?.copyWith(color: secondaryColor),
         ),
       ],
     );
   }
 
-  Widget _buildBottomButtons(BuildContext context) {
+  Widget _buildBottomButtons(BuildContext context, Transaction transaction) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       child: Row(
@@ -160,7 +171,7 @@ class TransactionDetailScreen extends StatelessWidget {
             child: OutlinedButton.icon(
               icon: const Icon(Icons.delete_outline),
               label: const Text('删除'),
-              onPressed: () => _confirmDelete(context),
+              onPressed: () => _confirmDelete(context, transaction),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -176,7 +187,7 @@ class TransactionDetailScreen extends StatelessWidget {
             child: ElevatedButton.icon(
               icon: const Icon(Icons.edit_outlined),
               label: const Text('修改'),
-              onPressed: () => _navigateToEdit(context),
+              onPressed: () => _navigateToEdit(context, transaction),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -192,7 +203,7 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  void _navigateToEdit(BuildContext context) {
+  void _navigateToEdit(BuildContext context, Transaction transaction) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -202,7 +213,7 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context) async {
+  void _confirmDelete(BuildContext context, Transaction transaction) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -231,7 +242,7 @@ class TransactionDetailScreen extends StatelessWidget {
           listen: false,
         ).deleteTransaction(transaction.id);
         if (context.mounted) {
-          Navigator.pop(context); // 返回上一页
+          Navigator.pop(context, true); // 删除成功后，需要返回并通知刷新
         }
       } catch (e) {
         if (context.mounted) {
