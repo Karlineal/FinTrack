@@ -84,8 +84,7 @@ class TransactionProvider with ChangeNotifier {
 
   // 初始化：从数据库加载所有交易记录
   Future<void> loadTransactions() async {
-    _isLoading = true;
-    notifyListeners();
+    _setLoading(true);
 
     try {
       _transactions =
@@ -98,8 +97,7 @@ class TransactionProvider with ChangeNotifier {
     } catch (e) {
       // print('加载交易记录时出错: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
@@ -199,8 +197,7 @@ class TransactionProvider with ChangeNotifier {
 
   // 按类别获取交易记录
   Future<void> loadTransactionsByCategory(Category category) async {
-    _isLoading = true;
-    notifyListeners();
+    _setLoading(true);
 
     try {
       _transactions =
@@ -215,8 +212,7 @@ class TransactionProvider with ChangeNotifier {
     } catch (e) {
       // print('按类别加载交易记录时出错: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
@@ -225,8 +221,7 @@ class TransactionProvider with ChangeNotifier {
     DateTime startDate,
     DateTime endDate,
   ) async {
-    _isLoading = true;
-    notifyListeners();
+    _setLoading(true);
 
     try {
       _transactions =
@@ -242,8 +237,7 @@ class TransactionProvider with ChangeNotifier {
     } catch (e) {
       // print('按日期范围加载交易记录时出错: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
@@ -281,52 +275,58 @@ class TransactionProvider with ChangeNotifier {
     return stats;
   }
 
-  // 转换所有交易记录到基准货币
-  Future<void> _convertTransactionsToBased() async {
-    try {
-      const baseCurrency = 'CNY'; // 直接将基准货币设为CNY
-
-      _convertedTransactions = [];
-
-      for (final transaction in _transactions) {
-        final transactionCurrency = transaction.currency;
-
-        if (transactionCurrency == baseCurrency) {
-          _convertedTransactions.add(transaction);
-        } else {
-          final convertedAmount = await ExchangeRateService.convertAmount(
-            transaction.amount,
-            transactionCurrency,
-            baseCurrency,
-          );
-          _convertedTransactions.add(
-            transaction.copyWith(
-              amount: convertedAmount,
-              currency: baseCurrency,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // print('转换交易记录到基准货币时出错: $e');
-      // 如果转换失败，使用原始数据，避免整个应用崩溃
-      _convertedTransactions = List.from(_transactions);
+  // 搜索交易记录
+  Future<List<Transaction>> searchTransactions(String query) async {
+    if (query.isEmpty) {
+      return _convertedTransactions;
     }
+    // Simple search in notes and category names for now
+    final lowerCaseQuery = query.toLowerCase();
+    return _convertedTransactions.where((t) {
+      final noteMatch = t.note?.toLowerCase().contains(lowerCaseQuery) ?? false;
+      final categoryMatch = t.category.name.toLowerCase().contains(
+        lowerCaseQuery,
+      );
+      return noteMatch || categoryMatch;
+    }).toList();
+  }
+
+  // 将所有交易记录转换为基准货币
+  Future<void> _convertTransactionsToBased() async {
+    final prefs = await SharedPreferences.getInstance();
+    final baseCurrency = prefs.getString('currency') ?? 'CNY';
+
+    final futures = _transactions.map((transaction) async {
+      if (transaction.currency == baseCurrency) {
+        return transaction;
+      }
+      final convertedAmount = await ExchangeRateService.convertAmount(
+        transaction.amount,
+        transaction.currency,
+        baseCurrency,
+      );
+      return transaction.copyWith(
+        amount: convertedAmount,
+        currency: baseCurrency,
+      );
+    });
+
+    _convertedTransactions = await Future.wait(futures);
+    // Sort again, as conversion might affect order if dates are the same
+    _convertedTransactions.sort((a, b) => b.date.compareTo(a.date));
   }
 
   // 刷新汇率并重新计算
   Future<void> refreshExchangeRates() async {
     if (_transactions.isNotEmpty) {
-      _isLoading = true;
-      notifyListeners();
-
+      _setLoading(true);
       try {
+        // Re-converting will implicitly use cached or fetched rates
         await _convertTransactionsToBased();
       } catch (e) {
         // 刷新失败，保持当前状态
       } finally {
-        _isLoading = false;
-        notifyListeners();
+        _setLoading(false);
       }
     }
   }
@@ -359,5 +359,30 @@ class TransactionProvider with ChangeNotifier {
       await _databaseService.insertTransaction(t);
     }
     await loadTransactions();
+  }
+
+  // 删除所有数据
+  Future<void> deleteAllData() async {
+    _setLoading(true);
+    try {
+      final db = _databaseService;
+      final allTransactions = await db.getTransactions();
+      for (final t in allTransactions) {
+        await db.deleteTransaction(t.id);
+      }
+      await loadTransactions();
+    } catch (e) {
+      // print('删除所有数据时出错: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 安全地更新加载状态并通知监听器
+  void _setLoading(bool loading) {
+    Future.microtask(() {
+      _isLoading = loading;
+      notifyListeners();
+    });
   }
 }
