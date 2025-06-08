@@ -210,9 +210,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   Widget _buildEditForm() {
     return TransactionForm(
-      initialTransaction:
-          widget.transaction, // Changed 'transaction' to 'initialTransaction'
-      currency: _globalCurrencySymbol, // 传递全局货币符号
+      initialTransaction: widget.transaction,
       onSubmit: (updatedTransaction) async {
         final provider = Provider.of<TransactionProvider>(
           context,

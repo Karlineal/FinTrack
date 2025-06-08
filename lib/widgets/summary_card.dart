@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/exchange_rate_service.dart';
 
 class SummaryCard extends StatelessWidget {
   final double income;

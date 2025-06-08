@@ -202,27 +202,18 @@ class TransactionProvider with ChangeNotifier {
     }
   }
 
-  // 按类型获取交易记录
-  Future<void> loadTransactionsByType(TransactionType type) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      _transactions =
-          (await _databaseService.getTransactionsByType(
-            type,
-          )).cast<Transaction>();
-      // 按日期排序（最新的在前）
-      _transactions.sort((a, b) => b.date.compareTo(a.date));
-
-      // 转换交易记录到基准货币
-      await _convertTransactionsToBased();
-    } catch (e) {
-      // print('按类型加载交易记录时出错: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  // 从现有列表中按日期范围筛选交易记录 (同步)
+  List<Transaction> getTransactionsInDateRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    return _transactions
+        .where(
+          (t) =>
+              !t.date.isBefore(startDate) &&
+              !t.date.isAfter(endDate.add(const Duration(days: 1))),
+        )
+        .toList();
   }
 
   // 获取按类别分组的支出统计

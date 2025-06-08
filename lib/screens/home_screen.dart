@@ -7,11 +7,14 @@ import 'add_transaction_screen.dart';
 import 'transaction_detail_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
+import 'category_selection_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 导入 SharedPreferences
 import '../services/exchange_rate_service.dart'; // 导入 ExchangeRateService
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
+
+enum DateFilterOption { none, oneWeek, oneMonth, sixMonths, oneYear, custom }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -326,6 +329,7 @@ class AllTransactionsScreen extends StatefulWidget {
 class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   // 筛选条件
   DateTimeRange? _dateRange;
+  DateFilterOption _selectedDateOption = DateFilterOption.none;
   Set<Category> _selectedCategories = {};
   Set<TransactionType> _selectedTypes = {
     TransactionType.expense,
@@ -334,6 +338,100 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   // 日期筛选弹窗
   Future<void> _pickDateRange() async {
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final options = {
+          '不限日期': DateFilterOption.none,
+          '一周以内': DateFilterOption.oneWeek,
+          '一个月以内': DateFilterOption.oneMonth,
+          '半年以内': DateFilterOption.sixMonths,
+          '一年以内': DateFilterOption.oneYear,
+        };
+        return SimpleDialog(
+          title: const Text('选择日期'),
+          children: [
+            ...options.entries.map((entry) {
+              final text = entry.key;
+              final option = entry.value;
+              final isSelected = _selectedDateOption == option;
+              return ListTile(
+                title: Text(
+                  text,
+                  style: TextStyle(
+                    color: isSelected ? Theme.of(context).primaryColor : null,
+                  ),
+                ),
+                trailing:
+                    isSelected
+                        ? Icon(
+                          Icons.check,
+                          color: Theme.of(context).primaryColor,
+                        )
+                        : null,
+                onTap: () {
+                  _setDateRangeFromOption(option);
+                  Navigator.pop(dialogContext);
+                },
+              );
+            }).toList(),
+            const Divider(height: 1),
+            ListTile(
+              title: const Text('自定义范围'),
+              onTap: () async {
+                Navigator.pop(dialogContext);
+                await _showCustomDateRangePicker();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _setDateRangeFromOption(DateFilterOption option) {
+    final now = DateTime.now();
+    DateTimeRange? newRange;
+
+    switch (option) {
+      case DateFilterOption.none:
+        newRange = null;
+        break;
+      case DateFilterOption.oneWeek:
+        newRange = DateTimeRange(
+          start: now.subtract(const Duration(days: 7)),
+          end: now,
+        );
+        break;
+      case DateFilterOption.oneMonth:
+        newRange = DateTimeRange(
+          start: now.subtract(const Duration(days: 30)),
+          end: now,
+        );
+        break;
+      case DateFilterOption.sixMonths:
+        newRange = DateTimeRange(
+          start: now.subtract(const Duration(days: 180)),
+          end: now,
+        );
+        break;
+      case DateFilterOption.oneYear:
+        newRange = DateTimeRange(
+          start: now.subtract(const Duration(days: 365)),
+          end: now,
+        );
+        break;
+      case DateFilterOption.custom:
+        return; // Custom is handled by _showCustomDateRangePicker
+    }
+
+    setState(() {
+      _dateRange = newRange;
+      _selectedDateOption = option;
+    });
+  }
+
+  Future<void> _showCustomDateRangePicker() async {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -343,6 +441,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     if (picked != null) {
       setState(() {
         _dateRange = picked;
+        _selectedDateOption = DateFilterOption.custom;
       });
     }
   }
@@ -400,55 +499,21 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   // 分类多选弹窗
   Future<void> _pickCategories() async {
-    final allCategories = Category.values;
-    final selected = Set<Category>.from(_selectedCategories);
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('选择分类'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView(
-                  shrinkWrap: true,
-                  children:
-                      allCategories.map((cat) {
-                        return CheckboxListTile(
-                          value: selected.contains(cat),
-                          title: Text(FormatUtil.getCategoryName(cat)),
-                          onChanged: (checked) {
-                            setState(() {
-                              if (checked == true) {
-                                selected.add(cat);
-                              } else {
-                                selected.remove(cat);
-                              }
-                            });
-                            // 立即生效并关闭弹窗
-                            this.setState(() {
-                              _selectedCategories = Set<Category>.from(
-                                selected,
-                              );
-                            });
-                            Navigator.pop(context);
-                          },
-                        );
-                      }).toList(),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('取消'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    final result = await Navigator.push<Set<Category>>(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => CategorySelectionScreen(
+              initialSelectedCategories: _selectedCategories,
+            ),
+      ),
     );
+
+    if (result != null) {
+      setState(() {
+        _selectedCategories = result;
+      });
+    }
   }
 
   // 过滤账单

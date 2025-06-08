@@ -26,6 +26,11 @@ class FormatUtil {
     return DateFormat('yyyy-MM-dd HH:mm').format(date);
   }
 
+  // 格式化时间
+  static String formatTime(DateTime date) {
+    return DateFormat('HH:mm').format(date);
+  }
+
   // 获取类别图标
   static IconData getCategoryIcon(Category category) {
     switch (category) {

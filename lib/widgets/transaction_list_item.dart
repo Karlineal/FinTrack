@@ -43,6 +43,7 @@ class TransactionListItem extends StatelessWidget {
                   child: Icon(
                     FormatUtil.getCategoryIcon(transaction.category),
                     size: 24,
+                    color: color,
                   ),
                 ),
               ),
@@ -51,12 +52,11 @@ class TransactionListItem extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      transaction.title,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      FormatUtil.getCategoryName(transaction.category),
+                      style: Theme.of(context).textTheme.titleMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -64,13 +64,22 @@ class TransactionListItem extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          FormatUtil.getCategoryName(transaction.category),
-                          style: Theme.of(context).textTheme.bodySmall,
+                          FormatUtil.formatTime(transaction.date),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          FormatUtil.formatDate(transaction.date),
-                          style: Theme.of(context).textTheme.bodySmall,
+                        Expanded(
+                          child: Text(
+                            // 优先显示备注，如果备注为空则显示标题
+                            transaction.note?.isNotEmpty == true
+                                ? transaction.note!
+                                : transaction.title,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -78,16 +87,15 @@ class TransactionListItem extends StatelessWidget {
                 ),
               ),
               // 金额
-              Flexible(
-                child: Text(
-                  '$sign${FormatUtil.formatCurrency(transaction.amount, currencyCode: transaction.currency)}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                '$sign${FormatUtil.formatCurrency(transaction.amount, currencyCode: transaction.currency)}',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

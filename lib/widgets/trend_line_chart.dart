@@ -5,274 +5,152 @@ class TrendLineChart extends StatelessWidget {
   final List<double> data;
   final List<String> xLabels;
   final bool isExpense;
-  final VoidCallback? onToggle;
-  final List<int>? labelIndexes;
+  final VoidCallback onToggle;
 
   const TrendLineChart({
     super.key,
     required this.data,
     required this.xLabels,
-    this.isExpense = true,
-    this.onToggle,
-    this.labelIndexes,
+    required this.isExpense,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor =
-        isExpense ? const Color(0xFF545F92) : const Color(0xFF6B7BB6);
-    // 1. 计算最大值，Y轴4等分
-    double maxY = 1.0;
-    if (data.isNotEmpty) {
-      maxY = data.reduce((a, b) => a > b ? a : b);
-      if (maxY < 1) maxY = 1.0;
-      // 上取整到最近的100/50/10等
-      double step = 1;
-      if (maxY > 1000)
-        step = 500;
-      else if (maxY > 500)
-        step = 200;
-      else if (maxY > 200)
-        step = 100;
-      else if (maxY > 100)
-        step = 50;
-      else if (maxY > 50)
-        step = 20;
-      else if (maxY > 20)
-        step = 10;
-      else if (maxY > 10)
-        step = 5;
-      else if (maxY > 5)
-        step = 2;
-      maxY = (maxY / step).ceil() * step;
-    }
-    // 只显示4个刻度（3等分，含0）
-    List<double> yTicks = List.generate(4, (i) => (maxY / 3 * i));
-    String formatYLabel(double value) {
-      if (maxY >= 1000) {
-        return (value / 1000).toStringAsFixed(1) + 'k';
-      } else {
-        return value.toStringAsFixed(0);
-      }
-    }
-
-    // 横坐标标签恢复为原有customXLabels逻辑
-    List<String> customXLabels;
-    // 年视图下直接全部显示月份
-    if (xLabels.length == 12 &&
-        xLabels[0].endsWith('月') &&
-        xLabels[11] == '12月') {
-      customXLabels = xLabels;
-    } else {
-      List<int> labelDays;
-      if (xLabels.length == 30) {
-        labelDays = [1, 5, 10, 15, 20, 25, 30];
-      } else {
-        // Handles 31, 29, 28 day months to have 6 intervals
-        labelDays = [1, 5, 10, 15, 20, 25];
-      }
-      customXLabels = List.generate(xLabels.length, (i) {
-        final label = xLabels[i];
-        for (final d in labelDays) {
-          if (label.endsWith('/$d')) return label;
-        }
-        if (i == xLabels.length - 1) return xLabels[i];
-        return '';
-      });
-    }
-    // 判断是否有数据
-    final bool hasData = data.any((v) => v > 0.0001);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7FA),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 14,
-              right: 14,
-              top: 8,
-              bottom: 0,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F7FA),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 14, top: 8),
+              child: Row(
+                children: [
+                  const Text(
+                    '趋势',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.normal,
+                      color: Color(0xFF23232B),
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildTrendToggleButton(true),
+                  const SizedBox(width: 10),
+                  _buildTrendToggleButton(false),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                const Text(
-                  '趋势',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF23232B),
+            const SizedBox(height: 10),
+            if (data.every((d) => d == 0.0))
+              SizedBox(
+                height: 200,
+                child: Center(
+                  child: Text(
+                    '暂无数据',
+                    style: TextStyle(color: Colors.grey.shade600),
                   ),
                 ),
-                Spacer(),
-                _buildToggleButton(context, true, isExpense),
-                const SizedBox(width: 10),
-                _buildToggleButton(context, false, isExpense),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20), // 增加趋势与图表间距
-          SizedBox(
-            height: 170,
-            child:
-                hasData
-                    ? Padding(
-                      padding: const EdgeInsets.only(
-                        left: 8,
-                        right: 8,
-                        top: 0,
-                        bottom: 0,
+              )
+            else
+              SizedBox(
+                height: 200,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 20, top: 10),
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: true,
+                        horizontalInterval: _getHorizontalInterval(),
+                        verticalInterval: 1,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.shade300,
+                            strokeWidth: 1,
+                            dashArray: [4, 4],
+                          );
+                        },
+                        getDrawingVerticalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.shade200,
+                            strokeWidth: 1,
+                          );
+                        },
                       ),
-                      child: LineChart(
-                        LineChartData(
-                          minX: 0,
-                          maxX: data.length.toDouble(),
-                          minY: 0,
-                          maxY: maxY,
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval:
-                                yTicks.length > 1 ? yTicks[1] - yTicks[0] : 1.0,
-                            getDrawingHorizontalLine:
-                                (value) => FlLine(
-                                  color: const Color(0xFFE5E5EF),
-                                  strokeWidth: 1,
-                                  dashArray: [6, 4],
-                                ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 30,
+                            interval: _getBottomTitleInterval(),
+                            getTitlesWidget: bottomTitleWidgets,
                           ),
-                          titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 28,
-                                getTitlesWidget: (value, meta) {
-                                  if (!yTicks.contains(value))
-                                    return const SizedBox.shrink();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 2),
-                                    child: Text(
-                                      formatYLabel(value),
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFFB0B0C0),
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                interval:
-                                    yTicks.length > 1
-                                        ? yTicks[1] - yTicks[0]
-                                        : 1.0,
-                              ),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 18,
-                                getTitlesWidget: (value, meta) {
-                                  final idx = value.toInt();
-                                  if (idx < 0 || idx >= customXLabels.length)
-                                    return const SizedBox.shrink();
-                                  final label = customXLabels[idx];
-                                  if (label.isEmpty)
-                                    return const SizedBox.shrink();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      label,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFFB0B0C0),
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                interval: 1,
-                              ),
-                            ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: leftTitleWidgets,
+                            reservedSize: 42,
+                            interval: _getHorizontalInterval(),
                           ),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: [
-                                for (int i = 0; i < data.length; i++)
-                                  FlSpot(
-                                    i.toDouble(),
-                                    data[i] < 0 ? 0 : data[i],
-                                  ),
-                              ],
-                              isCurved: false,
-                              color: mainColor,
-                              barWidth: 2,
-                              isStrokeCapRound: true,
-                              dotData: FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    mainColor.withOpacity(0.18),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                              shadow: const Shadow(
-                                color: Color(0x33545F92),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                    )
-                    : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.insert_drive_file_rounded,
-                            size: 48,
-                            color: Color(0xFFFBC02D),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '暂无数据',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFFB0B0C0),
+                      borderData: FlBorderData(
+                        show: false,
+                        border: Border.all(color: const Color(0xff37434d)),
+                      ),
+                      minX: 0,
+                      maxX: (data.length - 1).toDouble(),
+                      minY: 0,
+                      maxY: _getMaxY(),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: List.generate(data.length, (index) {
+                            return FlSpot(index.toDouble(), data[index]);
+                          }),
+                          isCurved: false,
+                          color: const Color(0xFF373A53),
+                          barWidth: 2.5,
+                          isStrokeCapRound: true,
+                          dotData: const FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF373A53).withOpacity(0.4),
+                                const Color(0xFF373A53).withOpacity(0.0),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-          ),
-        ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildToggleButton(
-    BuildContext context,
-    bool expense,
-    bool selectedExpense,
-  ) {
-    final bool selected = (expense == selectedExpense);
+  Widget _buildTrendToggleButton(bool forExpense) {
+    final bool selected = (forExpense == isExpense);
     return GestureDetector(
       onTap: selected ? null : onToggle,
       child: Container(
@@ -288,7 +166,7 @@ class TrendLineChart extends StatelessWidget {
                   : Border.all(color: const Color(0xFF545F92), width: 1),
         ),
         child: Text(
-          expense ? '支出' : '收入',
+          forExpense ? '支出' : '收入',
           style: TextStyle(
             color: selected ? Colors.white : const Color(0xFF545F92),
             fontSize: 13,
@@ -296,6 +174,55 @@ class TrendLineChart extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  double _getHorizontalInterval() {
+    if (data.isEmpty) return 1;
+    final maxVal = _getMaxY();
+    if (maxVal == 0) return 1;
+    return maxVal / 4;
+  }
+
+  double _getMaxY() {
+    if (data.isEmpty) return 100.0;
+    double maxVal = data.reduce((a, b) => a > b ? a : b);
+    if (maxVal == 0) return 100.0;
+    return maxVal;
+  }
+
+  double _getBottomTitleInterval() {
+    // The logic to show/hide labels is now handled in statistics_screen by populating
+    return 1;
+  }
+
+  Widget bottomTitleWidgets(double value, TitleMeta meta) {
+    const style = TextStyle(
+      color: Color(0xff68737d),
+      fontWeight: FontWeight.normal,
+      fontSize: 12,
+    );
+    Widget text;
+    int index = value.toInt();
+    if (index >= 0 && index < xLabels.length) {
+      text = Text(xLabels[index], style: style);
+    } else {
+      text = const Text('', style: style);
+    }
+
+    return SideTitleWidget(axisSide: meta.axisSide, child: text);
+  }
+
+  Widget leftTitleWidgets(double value, TitleMeta meta) {
+    const style = TextStyle(
+      color: Color(0xff67727d),
+      fontWeight: FontWeight.normal,
+      fontSize: 12,
+    );
+    return Text(
+      value.toStringAsFixed(1),
+      style: style,
+      textAlign: TextAlign.left,
     );
   }
 }

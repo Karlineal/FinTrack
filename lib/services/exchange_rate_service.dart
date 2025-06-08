@@ -12,12 +12,6 @@ class ExchangeRateService {
   static const Map<String, String> supportedCurrencies = {
     'CNY': '¥',
     'USD': '\$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥JP',
-    'KRW': '₩',
-    'HKD': 'HK\$',
-    'TWD': 'NT\$',
   };
 
   // 获取汇率数据
@@ -142,16 +136,7 @@ class ExchangeRateService {
   // 获取默认汇率（离线时使用）
   static Map<String, double> _getDefaultRates(String baseCurrency) {
     // 这里提供一些常用货币的近似汇率，以CNY为基准
-    const defaultRatesFromCNY = {
-      'CNY': 1.0,
-      'USD': 0.14,
-      'EUR': 0.13,
-      'GBP': 0.11,
-      'JPY': 20.0,
-      'KRW': 190.0,
-      'HKD': 1.1,
-      'TWD': 4.5,
-    };
+    const defaultRatesFromCNY = {'CNY': 1.0, 'USD': 0.14};
 
     if (baseCurrency == 'CNY') {
       return Map<String, double>.from(defaultRatesFromCNY);
