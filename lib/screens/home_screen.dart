@@ -8,7 +8,7 @@ import 'transaction_detail_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 import 'category_selection_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 导入 SharedPreferences
+// import 'package:shared_preferences/shared_preferences.dart'; // 导入 SharedPreferences
 // 导入 ExchangeRateService
 import '../models/transaction.dart';
 import '../utils/format_util.dart';
@@ -73,10 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 异步加载货币偏好
   Future<void> _loadCurrencyPreference() async {
-    final prefs = await SharedPreferences.getInstance();
+    // final prefs = await SharedPreferences.getInstance(); // Unused
     if (mounted) {
       setState(() {});
       // 加载后更新交易
+      if (!mounted) return; // Guard against async gaps
       await Provider.of<TransactionProvider>(
         context,
         listen: false,
@@ -306,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             onDelete: () => _confirmDeleteTransaction(context, transaction.id),
           );
-        }).toList(),
+        }),
       );
     });
 
@@ -355,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRatioBar(double income, double expense) {
     final total = income + expense;
     if (total == 0) {
-      return Container(width: 4, height: 16);
+      return const SizedBox(width: 4, height: 16);
     }
 
     final incomeRatio = income / total;
@@ -367,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(2),
-      child: Container(
+      child: SizedBox(
         width: 4,
         height: 16,
         child: Column(
@@ -411,6 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 Navigator.of(dialogContext).pop(); // 关闭对话框
                 // 调用 provider 中的方法删除交易
+                if (!mounted) return;
                 await Provider.of<TransactionProvider>(
                   context,
                   listen: false,
@@ -738,6 +740,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                       ),
                                 );
                                 if (confirmed == true) {
+                                  if (!mounted) return;
                                   await Provider.of<TransactionProvider>(
                                     context,
                                     listen: false,
@@ -768,7 +771,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         style: OutlinedButton.styleFrom(
           backgroundColor:
               selected
-                  ? colorScheme.primary.withOpacity(0.12)
+                  ? colorScheme.primary.withAlpha(30) // withOpacity(0.12)
                   : colorScheme.surface,
           side: BorderSide(
             color: selected ? colorScheme.primary : theme.dividerColor,
